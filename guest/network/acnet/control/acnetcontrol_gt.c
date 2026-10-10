@@ -3,9 +3,9 @@
  * and later; AmigaOS 3.x programs are GadTools or MUI).
  *
  * Five pages from acnetcontrol_core.c: Status, Wi-Fi, Connections,
- * Diagnostics and Log. GadTools has no tabs, so the pages are a radio list
- * down the left, as the classic Prefs editors do it; each page is drawn as
- * ridged groups with their lines, input fields, a list and buttons. While
+ * Diagnostics and Log, under a row of tabs drawn as MUI's Register class
+ * draws them (1.0.1; the same tabs as OpenLook's editors); each page is drawn
+ * as ridged groups with their lines, input fields, a list and buttons. While
  * the window is active the page refreshes itself every 3 seconds. The
  * window follows the screen's font (Topaz 8 when that would not fit the
  * screen) and can be resized. Closing it hides the Commodity; networking
@@ -37,10 +37,13 @@
 
 struct Library *GadToolsBase;
 
-#define VERSION_TEXT "OpenSocketControl 1.0 (4.10.2026)"
+#define VERSION_TEXT "OpenSocketControl 1.0.1 (10.10.2026)"
 static const char version[] __attribute__((used)) = "$VER: " VERSION_TEXT;
 
 enum { GID_PAGES = GID_FIRST_FREE, GID_STATUS, GID_COUNT };
+#define TAB_ID 900                       /* the tabs: TAB_ID + page (1.0.1) */
+#define TAB_PAD 12
+#define TAB_LIFT 2
 enum { M_ABOUT = 1, M_HIDE, M_QUIT };
 
 #define PAD     6       /* between groups, and between buttons */
@@ -66,6 +69,9 @@ static struct Menu *menu;
 static struct Gadget *glist;
 static struct TextFont *font;
 static struct TextAttr font_attr;
+static struct TextFont *mono;           /* a fixed-pitch font for the lists and their headings (1.0.1) */
+static struct TextAttr mono_attr;
+static struct RastPort measure_mono;
 static struct RastPort measure;
 static int page;
 static int fh, line_h, btn_h, mx_w, title_band;
@@ -75,6 +81,74 @@ static struct Gadget *gad[GID_COUNT];   /* the page's gadgets by id */
 static int ticks;
 
 static struct TextAttr topaz8 = { "topaz.font", 8, FS_NORMAL, FPF_ROMFONT };
+static int tab_x, tab_y, tab_w, tab_h, tab_tx[ACNC_PAGES], tab_tw[ACNC_PAGES];
+static int text_w(const char *s);
+
+/* ---- tabs, as MUI's Register draws them (1.0.1) -------------------------- */
+
+/* Each tab a GENERIC_KIND gadget with no imagery (drawn by tabs_draw), as wide as its name. */
+static struct Gadget *tabs_make(struct Gadget *g, struct NewGadget *ng, int x, int y, int w, int lh)
+{
+    int i, at = x;
+    tab_x = x; tab_y = y; tab_w = w; tab_h = lh;
+    for (i = 0; i < ACNC_PAGES; i++) {
+        tab_tw[i] = text_w(acnc_page[i].name) + 2 * TAB_PAD + 1;
+        tab_tx[i] = at;
+        at += tab_tw[i] - 1;
+    }
+    for (i = 0; i < ACNC_PAGES && g; i++) {
+        ng->ng_LeftEdge = tab_tx[i];
+        ng->ng_TopEdge = y - TAB_LIFT;
+        ng->ng_Width = tab_tw[i];
+        ng->ng_Height = lh + TAB_LIFT;
+        ng->ng_GadgetText = NULL;
+        ng->ng_Flags = 0;
+        ng->ng_GadgetID = TAB_ID + i;
+        if ((g = CreateGadget(GENERIC_KIND, g, ng, TAG_DONE))) {
+            g->Flags = GFLG_GADGHNONE;
+            g->Activation = GACT_RELVERIFY;
+            g->GadgetType |= GTYP_BOOLGADGET;
+            g->GadgetRender = g->SelectRender = NULL;
+        }
+    }
+    return g;
+}
+
+/* The tabs and the page's frame down to bottom. The open page's tab stands taller, in bold. */
+static void tabs_draw(struct Window *win, int bottom)
+{
+    struct RastPort *rp = win->RPort;
+    struct DrawInfo *dri = GetScreenDrawInfo(win->WScreen);
+    UWORD shine = dri ? dri->dri_Pens[SHINEPEN] : 2, shadow = dri ? dri->dri_Pens[SHADOWPEN] : 1;
+    UWORD text = dri ? dri->dri_Pens[TEXTPEN] : 1;
+    int i, base = tab_y + tab_h, left = tab_x - 4, right = tab_x + tab_w + 3;
+    if (right > win->Width - win->BorderRight - 4) right = win->Width - win->BorderRight - 4;
+    SetFont(rp, font);
+    SetDrMd(rp, JAM1);
+    for (i = 0; i <= ACNC_PAGES; i++) {
+        int t = i < ACNC_PAGES ? i : page, open = t == page, x0, x1, y0, ty;
+        const char *name = acnc_page[t].name;
+        if (i < ACNC_PAGES && i == page) continue;          /* the open one last, over the shared edges */
+        x0 = tab_tx[t]; x1 = x0 + tab_tw[t] - 1; y0 = open ? tab_y - TAB_LIFT : tab_y;
+        if (open) EraseRect(rp, x0 + 1, y0 + 1, x1 - 1, base);   /* in the window's own colour: no grey box */
+        SetAPen(rp, shine);
+        Move(rp, x0, base - (open ? 0 : 1)); Draw(rp, x0, y0 + 2); Draw(rp, x0 + 2, y0); Draw(rp, x1 - 2, y0);
+        SetAPen(rp, shadow);
+        Move(rp, x1 - 1, y0 + 1); Draw(rp, x1, y0 + 2); Draw(rp, x1, base - (open ? 0 : 1));
+        SetAPen(rp, text);
+        ty = y0 + (tab_h + (open ? TAB_LIFT : 0) - fh) / 2 + font->tf_Baseline + 1;
+        Move(rp, x0 + TAB_PAD, ty);
+        Text(rp, (STRPTR)name, strlen(name));
+        if (open) { Move(rp, x0 + TAB_PAD + 1, ty); Text(rp, (STRPTR)name, strlen(name)); }
+    }
+    SetAPen(rp, shine);
+    Move(rp, left, base); Draw(rp, tab_tx[page], base);
+    Move(rp, tab_tx[page] + tab_tw[page] - 1, base); Draw(rp, right, base);
+    Move(rp, left, base); Draw(rp, left, bottom);
+    SetAPen(rp, shadow);
+    Move(rp, left + 1, bottom); Draw(rp, right, bottom); Draw(rp, right, base + 1);
+    if (dri) FreeScreenDrawInfo(win->WScreen, dri);
+}
 
 /* ---- measuring ---------------------------------------------------------- */
 
@@ -85,6 +159,18 @@ static int text_w(const char *s)
     for (; *s && n < (int)sizeof(plain) - 1; ++s)
         if (*s != '_') plain[n++] = *s;          /* the shortcut mark takes no room */
     return TextLength(&measure, plain, n);
+}
+
+/* The lists' rows and headings are columns, so they are set in a fixed-pitch
+ * font: the screen's when it is one, else Topaz 8 (1.0.1). */
+static BOOL in_mono(const ACNCGroup *g)
+{
+    return g->list_id != 0;
+}
+
+static int line_w(const ACNCGroup *g, const char *s)
+{
+    return in_mono(g) ? TextLength(&measure_mono, (STRPTR)s, strlen(s)) : text_w(s);
 }
 
 static int button_w(const ACNCButton *b)
@@ -102,7 +188,7 @@ static int field_label_w(const ACNCGroup *g)
 
 static int list_h(const ACNCGroup *g)
 {
-    return g->list_rows * (fh + 1) + 4;
+    return g->list_rows * (mono->tf_YSize + 1) + 4;
 }
 
 static void group_natural(const ACNCGroup *g, int *w, int *h)
@@ -110,7 +196,7 @@ static void group_natural(const ACNCGroup *g, int *w, int *h)
     int i, gw = text_w(g->title) + 4 * PAD, gh = title_band + PAD, row = 0, cw = font->tf_XSize;
     /* widths below are the group's: its text plus INSET each side */
     for (i = 0; i < ACNC_MAX_LINES && g->line[i]; ++i) {
-        int tw = text_w(g->line[i]);
+        int tw = line_w(g, g->line[i]);
         if (tw > gw - 2 * INSET) gw = tw + 2 * INSET;
         gh += line_h;
     }
@@ -120,7 +206,7 @@ static void group_natural(const ACNCGroup *g, int *w, int *h)
         gh += PAD + btn_h;
     }
     if (g->list_id) {
-        int lw = g->list_chars * cw + 24;
+        int lw = g->list_chars * mono->tf_XSize + 24;
         if (lw > gw - 2 * INSET) gw = lw + 2 * INSET;
         gh += PAD + list_h(g);
     }
@@ -142,7 +228,7 @@ static void measure_pages(void)
 {
     int p, i;
     fh = font->tf_YSize;
-    line_h = fh + 2;
+    line_h = (mono && mono->tf_YSize > fh ? mono->tf_YSize : fh) + 2;
     btn_h = fh + 6;
     title_band = fh;
     mx_w = 0;
@@ -157,15 +243,24 @@ static void measure_pages(void)
         if (w > nat_w) nat_w = w;
         if (h > nat_h) nat_h = h;
     }
-    mx_w += 17 + 6;                  /* MXWIDTH and the gap before its label */
-    i = (fh > 9 ? fh : 9) + 4;       /* one radio row */
-    if (ACNC_PAGES * i > nat_h) nat_h = ACNC_PAGES * i;
+    mx_w = 0;
+    for (p = 0; p < ACNC_PAGES; ++p) mx_w += text_w(acnc_page[p].name) + 2 * TAB_PAD;   /* the tabs' row */
+    if (mx_w + 8 > nat_w) nat_w = mx_w + 8;
 }
 
 /* The screen's font, or Topaz 8 when the window would not fit the screen. */
 static BOOL choose_font(void)
 {
     int pass;
+    if (!mono) {
+        mono_attr = *scr->Font;
+        mono = OpenFont(&mono_attr);
+        if (mono && (mono->tf_Flags & FPF_PROPORTIONAL)) { CloseFont(mono); mono = NULL; }
+        if (!mono) { mono_attr = topaz8; mono = OpenFont(&mono_attr); }
+        if (!mono) return FALSE;
+        InitRastPort(&measure_mono);
+        SetFont(&measure_mono, mono);
+    }
     for (pass = 0; pass < 2; ++pass) {
         font_attr = pass ? topaz8 : *scr->Font;
         font = OpenFont(&font_attr);
@@ -174,8 +269,8 @@ static BOOL choose_font(void)
         SetFont(&measure, font);
         nat_w = nat_h = 0;
         measure_pages();
-        if (pass || (MARGIN * 3 + mx_w + nat_w + scr->WBorLeft + scr->WBorRight + 18 <= scr->Width &&
-                     MARGIN * 4 + line_h * 2 + nat_h + btn_h + scr->WBorTop + scr->Font->ta_YSize + 12 <= scr->Height))
+        if (pass || (MARGIN * 3 + nat_w + scr->WBorLeft + scr->WBorRight + 18 <= scr->Width &&
+                     MARGIN * 4 + line_h * 3 + TAB_LIFT + nat_h + btn_h + scr->WBorTop + scr->Font->ta_YSize + 12 <= scr->Height))
             return TRUE;
         CloseFont(font);
         font = NULL;
@@ -214,14 +309,22 @@ static void group_areas(const struct Zone *pa, struct Zone g[2])
     }
 }
 
+/* The tabs' row: under the heading, lifted a little above the page's frame. */
+static int tabs_top(void)
+{
+    struct Zone a;
+    inner(&a);
+    return a.y + line_h + PAD + TAB_LIFT;
+}
+
 static void page_area(struct Zone *pa)
 {
     struct Zone a;
     inner(&a);
-    pa->x = a.x + mx_w + MARGIN;
-    pa->y = a.y + line_h + PAD;
-    pa->w = a.w - mx_w - MARGIN;
-    pa->h = a.h - line_h - PAD - (line_h + 4) - PAD;
+    pa->x = a.x + 6;
+    pa->y = tabs_top() + line_h + 2 + PAD;
+    pa->w = a.w - 12;
+    pa->h = a.h - (pa->y - a.y) - PAD - 4 - (line_h + 4) - PAD;
 }
 
 static struct Gadget *make_gadgets(void)
@@ -241,14 +344,7 @@ static struct Gadget *make_gadgets(void)
     ng.ng_TextAttr = &font_attr;
     ng.ng_VisualInfo = vi;
 
-    ng.ng_LeftEdge = a.x;
-    ng.ng_TopEdge = pa.y + 2;
-    ng.ng_Width = 17;
-    ng.ng_Height = 9;
-    ng.ng_GadgetID = GID_PAGES;
-    ng.ng_Flags = PLACETEXT_RIGHT;
-    g = CreateGadget(MX_KIND, g, &ng, GTMX_Labels, (ULONG)page_names, GTMX_Active, page,
-                     GTMX_Spacing, (fh > 9 ? fh - 9 : 0) + 4, TAG_DONE);
+    g = tabs_make(g, &ng, pa.x, tabs_top(), pa.w, line_h + 2);
 
     group_areas(&pa, ga);
     for (k = 0; k < acnc_page[page].groups; ++k) {
@@ -278,8 +374,10 @@ static struct Gadget *make_gadgets(void)
             ng.ng_GadgetText = NULL;
             ng.ng_GadgetID = grp->list_id;
             ng.ng_Flags = 0;
+            ng.ng_TextAttr = &mono_attr;
             g = CreateGadget(LISTVIEW_KIND, g, &ng, GTLV_Labels, (ULONG)acnc_list(grp->list_id),
                              GTLV_ReadOnly, grp->list_id != GID_L_WIFI, TAG_DONE);
+            ng.ng_TextAttr = &font_attr;
             if (grp->list_id < GID_COUNT) gad[grp->list_id] = g;
             y += PAD + list_h(grp);
         }
@@ -328,13 +426,16 @@ static void say(struct RastPort *rp, int x, int y, const char *s, UWORD pen)
 }
 
 /* A line that may have grown since the window was measured: cut to fit. */
-static void say_in(struct RastPort *rp, int x, int y, int w, const char *s, UWORD pen)
+static void say_in(struct RastPort *rp, int x, int y, int w, const char *s, UWORD pen, struct TextFont *f)
 {
     struct TextExtent te;
-    ULONG n = TextFit(rp, (STRPTR)s, strlen(s), &te, NULL, 1, w, fh + 1);
+    ULONG n;
+    SetFont(rp, f);
+    n = TextFit(rp, (STRPTR)s, strlen(s), &te, NULL, 1, w, f->tf_YSize + 1);
     SetAPen(rp, pen);
-    Move(rp, x, y + font->tf_Baseline);
+    Move(rp, x, y + f->tf_Baseline);
     Text(rp, (STRPTR)s, n);
+    SetFont(rp, font);
 }
 
 /* What is not a gadget: the heading and the page's groups. */
@@ -342,7 +443,7 @@ static void draw_static(void)
 {
     struct RastPort *rp = win->RPort;
     struct DrawInfo *dri = GetScreenDrawInfo(scr);
-    UWORD text = dri ? dri->dri_Pens[TEXTPEN] : 1, back = dri ? dri->dri_Pens[BACKGROUNDPEN] : 0;
+    UWORD text = dri ? dri->dri_Pens[TEXTPEN] : 1;
     UWORD hi = dri ? dri->dri_Pens[HIGHLIGHTTEXTPEN] : 2;
     struct Zone a, pa, ga[2];
     int k, i;
@@ -353,6 +454,7 @@ static void draw_static(void)
     SetFont(rp, font);
     SetDrMd(rp, JAM1);
     say(rp, a.x, a.y, ACNC_TITLE, hi);
+    tabs_draw(win, pa.y + pa.h + 4);
 
     for (k = 0; k < acnc_page[page].groups; ++k) {
         const ACNCGroup *grp = &acnc_page[page].group[k];
@@ -361,12 +463,12 @@ static void draw_static(void)
         frame.y += title_band / 2;
         frame.h -= title_band / 2;
         ridge(rp, &frame);
-        SetAPen(rp, back);                       /* the title sits in a gap in the ridge */
-        RectFill(rp, ga[k].x + (ga[k].w - tw) / 2 - 4, ga[k].y, ga[k].x + (ga[k].w + tw) / 2 + 3, ga[k].y + fh - 1);
+        /* the title sits in a gap in the ridge, cleared in the window's own colour (OpenLook's) */
+        EraseRect(rp, ga[k].x + (ga[k].w - tw) / 2 - 4, ga[k].y, ga[k].x + (ga[k].w + tw) / 2 + 3, ga[k].y + fh - 1);
         say(rp, ga[k].x + (ga[k].w - tw) / 2, ga[k].y, grp->title, text);
         for (i = 0; i < ACNC_MAX_LINES && grp->line[i]; ++i)
             say_in(rp, ga[k].x + INSET, ga[k].y + title_band + PAD + i * line_h, ga[k].w - 2 * INSET,
-                   grp->line[i], text);
+                   grp->line[i], text, in_mono(grp) ? mono : font);
     }
     if (dri) FreeScreenDrawInfo(scr, dri);
 }
@@ -377,7 +479,7 @@ static void live_update(void)
 {
     struct RastPort *rp = win->RPort;
     struct DrawInfo *dri = GetScreenDrawInfo(scr);
-    UWORD text = dri ? dri->dri_Pens[TEXTPEN] : 1, back = dri ? dri->dri_Pens[BACKGROUNDPEN] : 0;
+    UWORD text = dri ? dri->dri_Pens[TEXTPEN] : 1;
     struct Zone pa, ga[2];
     int k, i;
 
@@ -389,9 +491,8 @@ static void live_update(void)
         const ACNCGroup *grp = &acnc_page[page].group[k];
         for (i = 0; i < ACNC_MAX_LINES && grp->line[i]; ++i) {
             int y = ga[k].y + title_band + PAD + i * line_h;
-            SetAPen(rp, back);
-            RectFill(rp, ga[k].x + INSET, y, ga[k].x + ga[k].w - INSET - 1, y + line_h - 1);
-            say_in(rp, ga[k].x + INSET, y, ga[k].w - 2 * INSET, grp->line[i], text);
+            EraseRect(rp, ga[k].x + INSET, y, ga[k].x + ga[k].w - INSET - 1, y + line_h - 1);
+            say_in(rp, ga[k].x + INSET, y, ga[k].w - 2 * INSET, grp->line[i], text, in_mono(grp) ? mono : font);
         }
         if (grp->list_id && grp->list_id < GID_COUNT && gad[grp->list_id]) {
             GT_SetGadgetAttrs(gad[grp->list_id], win, NULL, GTLV_Labels, ~0UL, TAG_DONE);
@@ -458,6 +559,7 @@ static void hide_window(void)
     if (menu) { FreeMenus(menu); menu = NULL; }
     if (vi) { FreeVisualInfo(vi); vi = NULL; }
     if (font) { CloseFont(font); font = NULL; }
+    if (mono) { CloseFont(mono); mono = NULL; }
     if (scr) { UnlockPubScreen(NULL, scr); scr = NULL; }
 }
 
@@ -476,8 +578,8 @@ static void show_window(void)
     menu = CreateMenus(menus, TAG_DONE);
     if (menu) LayoutMenus(menu, vi, GTMN_NewLookMenus, TRUE, TAG_DONE);
 
-    w = 2 * MARGIN + mx_w + MARGIN + nat_w;
-    h = 2 * MARGIN + line_h + PAD + nat_h + PAD + line_h + 4;
+    w = 2 * MARGIN + 12 + nat_w;
+    h = 2 * MARGIN + line_h + PAD + TAB_LIFT + line_h + 2 + PAD + nat_h + PAD + 4 + PAD + line_h + 4;
     win = OpenWindowTags(NULL,
         WA_Title, (ULONG)"OpenSocketControl",
         WA_ScreenTitle, (ULONG)"OpenSocket - networking for the Amiga",
@@ -591,10 +693,11 @@ static void window_events(void)
                 break;
             case IDCMP_NEWSIZE: redo(); break;
             case IDCMP_GADGETDOWN:
-                if (g->GadgetID == GID_PAGES && code != page) set_page(code);
                 break;
             case IDCMP_GADGETUP:
-                if (g->GadgetID == GID_L_WIFI) {            /* a network picked: its name */
+                if (g->GadgetID >= TAB_ID && g->GadgetID < TAB_ID + ACNC_PAGES) {
+                    if (g->GadgetID - TAB_ID != page) set_page(g->GadgetID - TAB_ID);
+                } else if (g->GadgetID == GID_L_WIFI) {            /* a network picked: its name */
                     const ACNCField *f = find_field(GID_F_WIFI_SSID);
                     if (acnc_pick(GID_L_WIFI, code) && f && gad[GID_F_WIFI_SSID])
                         GT_SetGadgetAttrs(gad[GID_F_WIFI_SSID], win, NULL, GTST_String, (ULONG)f->buf, TAG_DONE);
