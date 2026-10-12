@@ -78,10 +78,20 @@ fi
 # pages OpenSocketControl still lacks (live control, diagnostics, log, Wi-Fi).
 # -fno-common: the program's own library bases must win over libnix's
 # auto-open stubs.
+# No -lamiga here: the compiler already links amiga.lib after libnix (for
+# NewList and HotKey). Named on the command line, amiga.lib came first, and
+# its sprintf (RawDoFmt's: %u and %d read 16 bits, no %llu) replaced libnix's.
+# Each address byte then printed as two numbers, so 192.168.x.x showed as
+# 0.192.0.168 (12 Oct 2026). The link map is checked for that below.
 if [ -f "$HERE/control/acnetcontrol_gt.c" ]; then
     "$CC" -m68000 -O2 -fno-delete-null-pointer-checks -fno-common -Wall -Wno-pointer-sign -noixemul -I"$HERE/include" \
         -I"$GUEST/network/acnetwork/include" -I"$GUEST/network/acwifi/include" \
-        -o "$OUT/OpenSocketControl" "$HERE/control/acnetcontrol_gt.c" "$HERE/control/acnetcontrol_core.c" -lamiga
+        -Wl,-Map="$OUT/OpenSocketControl.map" \
+        -o "$OUT/OpenSocketControl" "$HERE/control/acnetcontrol_gt.c" "$HERE/control/acnetcontrol_core.c"
+    if grep -Eq 'libamiga\.a\((v?s?printf)\.o\)' "$OUT/OpenSocketControl.map"; then
+        echo "OpenSocketControl: printf or sprintf came from amiga.lib, whose %u is 16 bits" >&2
+        exit 1
+    fi
     echo "$OUT/OpenSocketControl ($(wc -c < "$OUT/OpenSocketControl") bytes)"
 fi
 
