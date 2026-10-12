@@ -37,7 +37,7 @@
 
 struct Library *GadToolsBase;
 
-#define VERSION_TEXT "OpenSocketControl 1.0.1 (10.10.2026)"
+#define VERSION_TEXT "OpenSocketControl 1.0.2 (12.10.2026)"   /* 1.0.2: addresses in the right order */
 static const char version[] __attribute__((used)) = "$VER: " VERSION_TEXT;
 
 enum { GID_PAGES = GID_FIRST_FREE, GID_STATUS, GID_COUNT };
