@@ -16,6 +16,8 @@
 #include <netdb.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+#include <utility/tagitem.h>
 #include "acnet_stack.h"
 
 struct Library *SocketBase;
@@ -183,6 +185,25 @@ static void test_tcp(void)
             result("WaitSelect keeps its timeout after an early wait", w==0 && ticks >= 35);
             FreeSignal(own);
         } else result("WaitSelect keeps its timeout after an early wait", 0);
+    }
+
+    /* A signal in the break mask ends a blocking call with EINTR and stays set for the program to see, as
+     * Roadshow and AmiTCP leave it (12 Oct 2026: 4.2 took it, so ping's CheckSignal() never saw its timer
+     * or Ctrl-C, and ping sent one packet and never ended). */
+    {
+        BYTE own = AllocSignal(-1);
+        ULONG m = own >= 0 ? 1UL << own : 0;
+        if (m) {
+            LONG r, e;
+            SocketBaseTags(SBTM_SETVAL(SBTC_BREAKMASK), SIGBREAKF_CTRL_C | m, TAG_END);
+            SetSignal(m, m);
+            r = recv(as, buf, 4, 0);
+            e = Errno();
+            result("break signal ends recv with EINTR", r < 0 && e == EINTR);
+            result("break signal stays set", (SetSignal(0, m) & m) != 0);
+            SocketBaseTags(SBTM_SETVAL(SBTC_BREAKMASK), SIGBREAKF_CTRL_C, TAG_END);
+            FreeSignal(own);
+        } else result("break signal ends recv with EINTR", 0);
     }
 
     result("FIONBIO enable", IoctlSocket(cs, FIONBIO, &nb) == 0);

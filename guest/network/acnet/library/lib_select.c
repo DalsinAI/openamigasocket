@@ -15,10 +15,14 @@ static ULONG timer_start(struct SocketBase *sb,const struct timeval *tv){ULONG m
 /* 1 if the request ran its full time, 0 if it was aborted. */
 static LONG timer_cancel(struct SocketBase *sb){if(!sb->tdev_open)return 0;if(!CheckIO((struct IORequest*)sb->treq))AbortIO((struct IORequest*)sb->treq);WaitIO((struct IORequest*)sb->treq);SetSignal(0,1UL<<sb->tport->mp_SigBit);return sb->treq->tr_node.io_Error==0;}
 
-LONG wait_items(struct SocketBase *sb,ULONG *items,ULONG *revents,LONG n,const struct timeval *tv,ULONG extra,ULONG *got_extra){ULONG rxlen=0,tmask,sigs;LONG ready,expired;if(got_extra)*got_extra=0;for(;;){prov_arm(sb);ready=prov_call(sb,ACHS_CMD_POLL,n,0,0,0,items,n*8,revents,n*4,&rxlen);if(ready<0){prov_disarm(sb);return fail_provider(sb);}if(ready>0){prov_disarm(sb);return ready;}if(tv&&tv->tv_secs==0&&tv->tv_micro==0){prov_disarm(sb);return 0;}tmask=timer_start(sb,tv);if(tv&&!tmask){prov_disarm(sb);return -1;}sigs=Wait(sb->provider_sigmask|tmask|extra|sb->sigintr);prov_disarm(sb);expired=tmask?timer_cancel(sb):0;if(sigs&sb->sigintr)return fail(sb,AE_INTR);if(sigs&extra){if(got_extra)*got_extra=sigs&extra;return 0;}if(expired)return 0;if(!n&&(sigs&sb->provider_sigmask))return 0;/* a pure event wait (wait_event): ACNet's signal ends it, the caller asks again */}}
+LONG wait_items(struct SocketBase *sb,ULONG *items,ULONG *revents,LONG n,const struct timeval *tv,ULONG extra,ULONG *got_extra){ULONG rxlen=0,tmask,sigs;LONG ready,expired;if(got_extra)*got_extra=0;for(;;){prov_arm(sb);ready=prov_call(sb,ACHS_CMD_POLL,n,0,0,0,items,n*8,revents,n*4,&rxlen);if(ready<0){prov_disarm(sb);return fail_provider(sb);}if(ready>0){prov_disarm(sb);return ready;}if(tv&&tv->tv_secs==0&&tv->tv_micro==0){prov_disarm(sb);return 0;}tmask=timer_start(sb,tv);if(tv&&!tmask){prov_disarm(sb);return -1;}sigs=Wait(sb->provider_sigmask|tmask|extra|sb->sigintr);prov_disarm(sb);expired=tmask?timer_cancel(sb):0;if(sigs&sb->sigintr){SetSignal(sigs&sb->sigintr,sigs&sb->sigintr);return fail(sb,AE_INTR);}if(sigs&extra){if(got_extra)*got_extra=sigs&extra;return 0;}if(expired)return 0;if(!n&&(sigs&sb->provider_sigmask))return 0;/* a pure event wait (wait_event): ACNet's signal ends it, the caller asks again */}}
 LONG wait_ready(struct SocketBase *sb,LONG handle,ULONG events,const struct timeval *tv){ULONG items[2]={handle,events},rev=0;LONG r=wait_items(sb,items,&rev,1,(tv&&(tv->tv_secs||tv->tv_micro))?tv:NULL,0,NULL);if(r<=0)return r;return (LONG)rev;}
 LONG wait_event(struct SocketBase *sb){ULONG items[2]={0,0},rev=0;LONG r=wait_items(sb,items,&rev,0,NULL,0,NULL);return r<0?-1:0;}
 
+/* A break signal (SBTC_BREAKMASK, Ctrl-C unless the program sets it) ends a wait with EINTR and is set again
+ * after Wait() took it, as Roadshow and AmiTCP leave it: the program checks it after EINTR (ping's
+ * CheckSignal() of its timer and of Ctrl-C). 4.3: before, the signal was eaten, so ping sent one packet and
+ * then waited for ever, deaf to Ctrl-C too. */
 /* Wait after the caller has already armed the provider, preserving the classic
  * arm -> poll -> sleep pattern without losing an event between poll and Wait().
  * 1=provider event, 0=timeout, 2=extra signal, -1=interrupt/error. */
@@ -28,7 +32,7 @@ LONG wait_armed_event(struct SocketBase *sb,const struct timeval *tv,ULONG extra
  if(tv){tmask=timer_start(sb,tv);if(!tmask){prov_disarm(sb);return -1;}}
  sigs=Wait(sb->provider_sigmask|tmask|extra|sb->sigintr);prov_disarm(sb);
  expired=tmask?timer_cancel(sb):0;
- if(sigs&sb->sigintr)return fail(sb,AE_INTR);
+ if(sigs&sb->sigintr){SetSignal(sigs&sb->sigintr,sigs&sb->sigintr);return fail(sb,AE_INTR);}
  if(sigs&extra){if(got_extra)*got_extra=sigs&extra;return 2;}
  if(expired)return 0;
  return (sigs&sb->provider_sigmask)?1:0;
