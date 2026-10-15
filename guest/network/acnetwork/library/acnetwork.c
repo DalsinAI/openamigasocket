@@ -12,8 +12,6 @@
 #define ENETDOWN 50
 #define ENOMEM   12
 
-struct ExecBase *SysBase;
-
 int start(void) { return -1; }
 
 static const char lib_name[] = ACNETWORK_LIBRARY_NAME;
@@ -89,7 +87,7 @@ static void session_close(struct ACNetworkBase *base)
 
 static struct ACNetworkBase *lib_init(REG(d0, struct ACNetworkBase *base), REG(a0, BPTR seglist), REG(a6, struct ExecBase *sys))
 {
-    SysBase = sys;
+    (void)sys;
     base->seglist = seglist;
     base->master = NULL;
     base->sigbit = -1;

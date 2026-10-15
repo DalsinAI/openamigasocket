@@ -1,4 +1,8 @@
-/* bsdsocket.library provider backed by acnetwork.library.
+/* bsdsocket.library's Host backend: the calls go through opensocket.library
+ * (acnetwork.library), opensocket.device and the OpenSocket card to the
+ * host's sockets. Both are opened from disk (LIBS:, DEVS:Networks/). Once
+ * the card layer has chosen Host, an open never fails here: with either
+ * file missing, or the bridge down, each call answers ENETDOWN.
  * MIT. */
 #include <exec/types.h>
 #include <proto/exec.h>
@@ -37,27 +41,26 @@ static inline ULONG net_signalmask(struct Library *lib)
     return d0;
 }
 
-LONG prov_open(struct SocketBase *sb)
+LONG host_open(struct SocketBase *sb)
 {
     sb->network = OpenLibrary(ACNETWORK_LIBRARY_NAME, ACNETWORK_LIBRARY_VERSION);
-    if (!sb->network) return ENETDOWN;
+    if (!sb->network) return 0;                /* each call: ENETDOWN */
     sb->provider_sigmask = net_signalmask(sb->network);
     if (!sb->provider_sigmask) {
         CloseLibrary(sb->network);
         sb->network = NULL;
-        return ENETDOWN;
     }
     return 0;
 }
 
-void prov_close(struct SocketBase *sb)
+void host_close(struct SocketBase *sb)
 {
     if (sb->network) CloseLibrary(sb->network);
     sb->network = NULL;
     sb->provider_sigmask = 0;
 }
 
-LONG prov_call(struct SocketBase *sb, ULONG cmd, ULONG a0, ULONG a1, ULONG a2, ULONG a3,
+LONG host_call(struct SocketBase *sb, ULONG cmd, ULONG a0, ULONG a1, ULONG a2, ULONG a3,
                const void *tx, ULONG txlen, void *rx, ULONG rxmax, ULONG *rxlen)
 {
     struct ACNetworkRequest request;
@@ -79,12 +82,12 @@ LONG prov_call(struct SocketBase *sb, ULONG cmd, ULONG a0, ULONG a1, ULONG a2, U
     return request.result;
 }
 
-void prov_arm(struct SocketBase *sb)
+void host_arm(struct SocketBase *sb)
 {
     if (sb->network) net_arm(sb->network);
 }
 
-void prov_disarm(struct SocketBase *sb)
+void host_disarm(struct SocketBase *sb)
 {
     if (sb->network) net_disarm(sb->network);
 }

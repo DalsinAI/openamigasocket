@@ -27,6 +27,12 @@ struct ACNetworkBase {
     ULONG last_error;
 };
 
-extern struct ExecBase *SysBase;
+/* amigachrome-guest, libraries/opensocket (the open ROM): no writable
+ * globals, so the same code runs from the ROM. exec's base is read from
+ * address 4 (AbsExecBase) each time, through a register, as gcc 16's
+ * -Warray-bounds wants for a pointer made from a constant. */
+static inline struct ExecBase *osl_sysbase(void)
+{ struct ExecBase **p = (struct ExecBase **)4; __asm__ ("" : "+r"(p)); return *p; }
+#define SysBase (osl_sysbase())
 
 #endif

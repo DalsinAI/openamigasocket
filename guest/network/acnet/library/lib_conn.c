@@ -27,7 +27,7 @@ LONG bsd_socket(struct SocketBase *sb, LONG domain, LONG type, LONG protocol)
     if (h < 0) return fail_provider(sb);
     LONG s = fd_alloc(sb, h, (UBYTE)type, -1);
     if (s < 0) { prov_call(sb, ACHS_CMD_CLOSE, h, 0, 0, 0, NULL, 0, NULL, 0, NULL); return -1; }
-    handle_ref(h); return s;
+    handle_ref(sb, h); return s;
 }
 
 LONG bsd_bind(struct SocketBase *sb, LONG s, struct sockaddr *name, socklen_t len) { return sockaddr_call(sb,s,ACHS_CMD_BIND,name,len,0); }
@@ -52,7 +52,7 @@ LONG bsd_accept(struct SocketBase *sb, LONG s, struct sockaddr *addr, socklen_t 
         if(w<=0) return w==0?fail(sb,AE_TIMEDOUT):-1;
     }
     LONG ns=fd_alloc(sb,h,f->type,-1); if(ns<0){prov_call(sb,ACHS_CMD_CLOSE,h,0,0,0,NULL,0,NULL,0,NULL);return -1;}
-    handle_ref(h);
+    handle_ref(sb, h);
     if(addr && addrlen){ULONG m=*addrlen<n?*addrlen:n; CopyMem(rx,addr,m); *addrlen=(socklen_t)n;}
     return ns;
 }

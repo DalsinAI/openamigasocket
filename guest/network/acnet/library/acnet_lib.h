@@ -16,11 +16,12 @@
 #include <netdb.h>
 
 #include "acnet_device.h"
+#include "card.h"
 
 #define REG(r, decl) register decl __asm(#r)   /* bebbo gcc: an argument in a register */
 
 #define ACNET_LIB_VERSION   4
-#define ACNET_LIB_REVISION  3
+#define ACNET_LIB_REVISION  4
 #define DTABLE_DEFAULT      64
 #define DTABLE_MAX          256
 #define NAME_MAX_ADDRS      32
@@ -46,6 +47,18 @@ struct BPFLocal {
     UBYTE pad[2];
 };
 
+/* What all openers share: the handle counts and the sockets waiting to be
+ * obtained, changed under Forbid(), and the backend the card layer chose at
+ * init (card.c). In memory the master allocates at init, not in globals, so
+ * the library runs from a ROM (amigachrome-guest, libraries/opensocket). */
+struct SocketShared {
+    struct { LONG handle, refs; } refs[DTABLE_MAX];
+    struct { LONG id, handle; UBYTE type, used, pad[2]; } released[16];
+    LONG next_id;
+    struct CardConfig card;
+    APTR direct;                   /* the Direct backend's stack, when it runs */
+};
+
 /* Every OpenLibrary gets a base of its own, as classic Amiga socket libraries give: the
  * master's jump table and Library header are copied in front of it. */
 struct SocketBase {
@@ -53,6 +66,7 @@ struct SocketBase {
     UWORD pad;
     struct SocketBase *master;     /* NULL in the master itself */
     BPTR seglist;                  /* the master's */
+    struct SocketShared *shared;   /* the master's, in every base */
     /* per opener */
     struct Task *owner;
     struct Library *network;       /* acnetwork.library, opened per BSD opener */
@@ -91,7 +105,13 @@ struct SocketBase {
     char hostname[64];
 };
 
-extern struct ExecBase *SysBase;
+/* amigachrome-guest, libraries/opensocket (the open ROM): no writable
+ * globals, so the same code runs from the ROM. exec's base is read from
+ * address 4 (AbsExecBase) each time, through a register, as gcc 16's
+ * -Warray-bounds wants for a pointer made from a constant. */
+static inline struct ExecBase *acn_sysbase(void)
+{ struct ExecBase **p = (struct ExecBase **)4; __asm__ ("" : "+r"(p)); return *p; }
+#define SysBase (acn_sysbase())
 
 struct SocketBase *lib_open(REG(d0, ULONG version), REG(a6, struct SocketBase *master));
 BPTR lib_close(REG(a6, struct SocketBase *sb));

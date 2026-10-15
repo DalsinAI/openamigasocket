@@ -3,3 +3,4 @@ build/
 *.tmp
 __pycache__/
 .DS_Store
+guest/network/acnet/build-amiga/

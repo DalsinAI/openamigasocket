@@ -41,7 +41,7 @@ LONG fail_provider(struct SocketBase *sb);           /* errno from the provider'
 struct FD *fd_get(struct SocketBase *sb, LONG s);    /* NULL with EBADF */
 LONG fd_alloc(struct SocketBase *sb, LONG handle, UBYTE type, LONG at);   /* at < 0: the lowest free */
 void fd_free(struct SocketBase *sb, LONG s);         /* the host socket closes with its last reference */
-void handle_ref(LONG handle);
+void handle_ref(struct SocketBase *sb, LONG handle);
 UBYTE *scratch(struct SocketBase *sb);               /* SCRATCH_SIZE bytes, or NULL with ENOMEM */
 const char *errno_string(LONG e);
 const char *herrno_string(LONG e);

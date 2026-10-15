@@ -11,32 +11,32 @@
 #include "lib_internal.h"
 
 /* Shared by all openers: the handle counts and the sockets waiting to be
- * obtained. Changed under Forbid(). */
-static struct { LONG handle, refs; } refs[DTABLE_MAX];
-static struct { LONG id, handle; UBYTE type, used, pad[2]; } released[16];
-static LONG next_id = 1;
+ * obtained, in sb->shared (acnet_lib.h). Changed under Forbid(). */
+#define REFS (sb->shared->refs)
+#define RELEASED (sb->shared->released)
+#define NEXT_ID (sb->shared->next_id)
 
-void handle_ref(LONG handle)
+void handle_ref(struct SocketBase *sb, LONG handle)
 {
     LONG i, empty = -1;
     Forbid();
     for (i = 0; i < DTABLE_MAX; i++) {
-        if (refs[i].handle == handle) { refs[i].refs++; Permit(); return; }
-        if (!refs[i].handle && empty < 0) empty = i;
+        if (REFS[i].handle == handle) { REFS[i].refs++; Permit(); return; }
+        if (!REFS[i].handle && empty < 0) empty = i;
     }
-    if (empty >= 0) { refs[empty].handle = handle; refs[empty].refs = 1; }
+    if (empty >= 0) { REFS[empty].handle = handle; REFS[empty].refs = 1; }
     Permit();
 }
 
 /* The references left on handle after dropping one. */
-static LONG handle_unref(LONG handle)
+static LONG handle_unref(struct SocketBase *sb, LONG handle)
 {
     LONG i, left = 0;
     Forbid();
     for (i = 0; i < DTABLE_MAX; i++)
-        if (refs[i].handle == handle) {
-            left = --refs[i].refs;
-            if (left <= 0) { refs[i].handle = 0; left = 0; }
+        if (REFS[i].handle == handle) {
+            left = --REFS[i].refs;
+            if (left <= 0) { REFS[i].handle = 0; left = 0; }
             break;
         }
     Permit();
@@ -69,7 +69,7 @@ void fd_free(struct SocketBase *sb, LONG s)
 {
     LONG h = sb->fds[s].handle;
     sb->fds[s].handle = 0;
-    if (h && handle_unref(h) == 0)
+    if (h && handle_unref(sb, h) == 0)
         prov_call(sb, ACHS_CMD_CLOSE, (ULONG)h, 0, 0, 0, NULL, 0, NULL, 0, NULL);
 }
 
@@ -101,7 +101,7 @@ LONG bsd_Dup2Socket(struct SocketBase *sb, LONG old_socket, LONG new_socket)
     struct FD copy = *f;
     LONG s = fd_alloc(sb, copy.handle, copy.type, new_socket);
     if (s < 0) return -1;
-    handle_ref(copy.handle);
+    handle_ref(sb, copy.handle);
     sb->fds[s] = copy;
     return s;
 }
@@ -112,18 +112,18 @@ static LONG release(struct SocketBase *sb, LONG sock, LONG id, int keep)
     if (!f) return -1;
     LONG i, slot = -1;
     Forbid();
-    if (id == A_UNIQUE_ID) id = next_id++;
+    if (id == A_UNIQUE_ID) id = NEXT_ID++;
     for (i = 0; i < 16; i++) {
-        if (released[i].used && released[i].id == id) { Permit(); return fail(sb, AE_INVAL); }
-        if (!released[i].used && slot < 0) slot = i;
+        if (RELEASED[i].used && RELEASED[i].id == id) { Permit(); return fail(sb, AE_INVAL); }
+        if (!RELEASED[i].used && slot < 0) slot = i;
     }
     if (slot < 0) { Permit(); return fail(sb, AE_MFILE); }
-    released[slot].id = id;
-    released[slot].handle = f->handle;
-    released[slot].type = f->type;
-    released[slot].used = 1;
+    RELEASED[slot].id = id;
+    RELEASED[slot].handle = f->handle;
+    RELEASED[slot].type = f->type;
+    RELEASED[slot].used = 1;
     Permit();
-    if (keep) handle_ref(f->handle);             /* both the opener and the release hold it */
+    if (keep) handle_ref(sb, f->handle);             /* both the opener and the release hold it */
     else f->handle = 0;                          /* the reference moves with the socket */
     return id;
 }
@@ -137,13 +137,13 @@ LONG bsd_ObtainSocket(struct SocketBase *sb, LONG id, LONG domain, LONG type, LO
     LONG i;
     Forbid();
     for (i = 0; i < 16; i++)
-        if (released[i].used && released[i].id == id && (!type || released[i].type == type)) {
-            LONG handle = released[i].handle;
-            UBYTE t = released[i].type;
-            released[i].used = 0;
+        if (RELEASED[i].used && RELEASED[i].id == id && (!type || RELEASED[i].type == type)) {
+            LONG handle = RELEASED[i].handle;
+            UBYTE t = RELEASED[i].type;
+            RELEASED[i].used = 0;
             Permit();
             LONG s = fd_alloc(sb, handle, t, -1);
-            if (s < 0) { if (handle_unref(handle) == 0) prov_call(sb, ACHS_CMD_CLOSE, (ULONG)handle, 0, 0, 0, NULL, 0, NULL, 0, NULL); }
+            if (s < 0) { if (handle_unref(sb, handle) == 0) prov_call(sb, ACHS_CMD_CLOSE, (ULONG)handle, 0, 0, 0, NULL, 0, NULL, 0, NULL); }
             return s;
         }
     Permit();
