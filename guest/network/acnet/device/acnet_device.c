@@ -75,7 +75,13 @@ struct ACNetBase {
     ULONG reconfigurations;
 };
 
-struct ExecBase *SysBase;
+/* amigachrome-guest, libraries/opensocket (the open ROM): no writable
+ * globals, so the same code runs from the ROM. exec's base is read from
+ * address 4 (AbsExecBase) each time, through a register, as gcc 16's
+ * -Warray-bounds wants for a pointer made from a constant. */
+static inline struct ExecBase *osd_sysbase(void)
+{ struct ExecBase **p = (struct ExecBase **)4; __asm__ ("" : "+r"(p)); return *p; }
+#define SysBase (osd_sysbase())
 
 /* Run as a program, the device does nothing. This must stay the first code
  * in the file: build.sh keeps source order (-fno-toplevel-reorder). */
@@ -130,7 +136,7 @@ static LONG call(struct ACNetBase *b, struct ACNCall *c)
 
 /* ---- SANA-II packet facade ---------------------------------------------------- */
 
-static struct ACNetBase *packet_base;
+/* The packet task finds its device base in its tc_UserData (amigachrome-guest, the open ROM: no global). */
 
 static ULONG tag_data(APTR raw, ULONG wanted)
 {
@@ -344,7 +350,7 @@ struct ACNewMemList {
     struct MemEntry me[2];
 };
 
-static struct Task *create_packet_task(STRPTR name, LONG pri, APTR entry, ULONG stacksize)
+static struct Task *create_packet_task(STRPTR name, LONG pri, APTR entry, ULONG stacksize, APTR data)
 {
     struct ACNewMemList request;
     struct MemList *ml;
@@ -374,6 +380,7 @@ static struct Task *create_packet_task(STRPTR name, LONG pri, APTR entry, ULONG 
     task->tc_MemEntry.lh_Tail = NULL;
     task->tc_MemEntry.lh_TailPred = (struct Node *)&task->tc_MemEntry.lh_Head;
     AddHead(&task->tc_MemEntry, &ml->ml_Node);
+    task->tc_UserData = data;
     if (!AddTask(task, entry, NULL)) {
         FreeEntry(ml);
         return NULL;
@@ -383,7 +390,7 @@ static struct Task *create_packet_task(STRPTR name, LONG pri, APTR entry, ULONG 
 
 static void packet_worker(void)
 {
-    struct ACNetBase *b = packet_base;
+    struct ACNetBase *b = (struct ACNetBase *)FindTask(NULL)->tc_UserData;
     if (!b) { RemTask(NULL); return; }
     for (;;) {
         ULONG sig = Wait(ACNET_WORK_SIG | ACNET_STOP_SIG);
@@ -475,9 +482,8 @@ static void start_card(struct ACNetBase *b)
     b->irq_added = 1;
     R(ACHS_REG_IRQ_ENABLE) = 1;
     packet_info(b);
-    packet_base = b;
     if (!b->packet_task)
-        b->packet_task = create_packet_task((STRPTR)"opensocket.packet", 5, packet_worker, 8192);
+        b->packet_task = create_packet_task((STRPTR)"opensocket.packet", 5, packet_worker, 8192, b);
 }
 
 static void stop_card(struct ACNetBase *b)
@@ -494,7 +500,6 @@ static void stop_card(struct ACNetBase *b)
         RemTask(b->packet_task);
         b->packet_task = NULL;
     }
-    if (packet_base == b) packet_base = NULL;
     Permit();
     if (b->cd) { b->cd->cd_Driver = NULL; b->cd->cd_Flags |= CDF_CONFIGME; }
     b->card = NULL;
@@ -917,7 +922,7 @@ static ULONG acn_state(REG(a6, struct ACNetBase *b))
 
 static struct ACNetBase *dev_init(REG(d0, struct ACNetBase *b), REG(a0, BPTR seglist), REG(a6, struct ExecBase *sys))
 {
-    SysBase = sys;
+    (void)sys;
     b->seglist = seglist;
     b->lib.lib_Node.ln_Type = NT_DEVICE;
     b->lib.lib_Node.ln_Name = (char *)dev_name;
@@ -948,5 +953,9 @@ static const struct { ULONG size; const APTR *vectors; APTR data; APTR init; } d
 };
 const struct Resident dev_romtag = {
     RTC_MATCHWORD, (struct Resident *)&dev_romtag, (APTR)(&dev_romtag + 1),
-    RTF_AUTOINIT, ACNET_DEVICE_VERSION, NT_DEVICE, 0, (char *)dev_name, (char *)dev_id, (APTR)&dev_inittable,
+    /* amigachrome-guest (the open ROM): started by dos after DOS is up
+     * (RTF_AFTERDOS), so "DEVS:Networks/opensocket.device" opens it from
+     * memory; its init touches no hardware, so it costs nothing with the
+     * Network switch off */
+    RTF_AUTOINIT | RTF_AFTERDOS, ACNET_DEVICE_VERSION, NT_DEVICE, -120, (char *)dev_name, (char *)dev_id, (APTR)&dev_inittable,
 };

@@ -1,0 +1,32 @@
+name: host tests
+
+# What runs without the NDK (which is not redistributed): the card layer's
+# configuration parser (guest/network/acnet/tests/host), the vector table
+# generated from the ABI manifest, and the build scripts' syntax. The m68k
+# builds and bsdqual run on an AmigaChrome lab.
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  host:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: card layer configuration parser
+        working-directory: guest/network/acnet/tests/host
+        run: |
+          gcc -Wall -Wextra -Werror -Wno-unused-parameter -Iinclude -I../../library \
+            -o card_parse_test card_parse_test.c ../../library/card_parse.c
+          ./card_parse_test
+      - name: vector table from the ABI manifest
+        run: |
+          L=guest/network/acnet/library
+          LIB="$L/lib_base.c $L/lib_fd.c $L/lib_errno.c $L/lib_tags.c $L/lib_strings.c $L/lib_select.c $L/lib_conn.c $L/lib_io.c $L/lib_opt.c $L/lib_names.c $L/lib_inet.c guest/network/acnet/compat/roadshow/routes.c guest/network/acnet/compat/roadshow/state.c guest/network/acnet/compat/roadshow/modern.c guest/network/acnet/compat/roadshow/bpf.c"
+          python3 $L/gen_vectors.py guest/network/acnet/abi/bsdsocket-v4.json /tmp/vectors.c $LIB \
+            --guard guest/network/acnet/compat/roadshow/guard-v4.json | tee /tmp/vectors.log
+          grep -q '46 implemented, 0 stubs' /tmp/vectors.log
+      - name: build scripts parse
+        run: for f in $(git ls-files '*.sh'); do sh -n "$f" || exit 1; done

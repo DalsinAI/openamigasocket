@@ -11,23 +11,34 @@
 
 #include "lib_internal.h"
 
-struct ExecBase *SysBase;
-
 /* Run as a program, the library does nothing. This must stay the first code
  * in the library: build.sh links this file first and keeps source order. */
 int start(void) { return -1; }
 
 static const char lib_name[] = "bsdsocket.library";
-static const char lib_id[] = "bsdsocket.library 4.3 (12.10.2026) OpenSocket (AmigaChrome)\r\n";
-static const char lib_ver[] __attribute__((used)) = "$VER: bsdsocket.library 4.3 (12.10.2026) OpenSocket (AmigaChrome)";
+static const char lib_id[] = "bsdsocket.library 4.4 (15.10.2026) OpenSocket (AmigaChrome)\r\n";
+static const char lib_ver[] __attribute__((used)) = "$VER: bsdsocket.library 4.4 (15.10.2026) OpenSocket (AmigaChrome)";
 
 extern const APTR acnet_vectors[];
 
 static struct SocketBase *lib_init(REG(d0, struct SocketBase *b), REG(a0, BPTR seglist), REG(a6, struct ExecBase *sys))
 {
-    SysBase = sys;
+    (void)sys;
     b->seglist = seglist;
     b->master = NULL;
+    if (!(b->shared = AllocMem(sizeof(struct SocketShared), MEMF_PUBLIC | MEMF_CLEAR))) {
+        FreeMem((UBYTE *)b - b->lib.lib_NegSize, b->lib.lib_NegSize + b->lib.lib_PosSize);
+        return NULL;
+    }
+    /* The card layer: no card and no device, and the init keeps nothing.
+     * From a ROM, ramlib then goes on to LIBS:bsdsocket.library (another
+     * stack); from LIBS:, OpenLibrary fails, as with no stack at all. */
+    if (card_choose(&b->shared->card) == BACKEND_NONE) {
+        FreeMem(b->shared, sizeof(struct SocketShared));
+        FreeMem((UBYTE *)b - b->lib.lib_NegSize, b->lib.lib_NegSize + b->lib.lib_PosSize);
+        return NULL;
+    }
+    b->shared->next_id = 1;
     b->lib.lib_Node.ln_Type = NT_LIBRARY;
     b->lib.lib_Node.ln_Name = (char *)lib_name;
     b->lib.lib_Flags = LIBF_SUMUSED | LIBF_CHANGED;
@@ -52,6 +63,7 @@ struct SocketBase *lib_open(REG(d0, ULONG version), REG(a6, struct SocketBase *m
     sb->lib.lib_Node.ln_Succ = sb->lib.lib_Node.ln_Pred = NULL;   /* not in the library list */
     sb->lib.lib_OpenCnt = 1;
     sb->master = m;
+    sb->shared = m->shared;
     sb->owner = FindTask(NULL);
     sb->sigbit = -1;
     sb->sigintr = SIGBREAKF_CTRL_C;
@@ -72,6 +84,7 @@ BPTR lib_expunge(REG(a6, struct SocketBase *m))
     if (m->lib.lib_OpenCnt) { m->lib.lib_Flags |= LIBF_DELEXP; return 0; }
     BPTR seg = m->seglist;
     Remove(&m->lib.lib_Node);
+    FreeMem(m->shared, sizeof(struct SocketShared));
     FreeMem((UBYTE *)m - m->lib.lib_NegSize, m->lib.lib_NegSize + m->lib.lib_PosSize);
     return seg;
 }

@@ -26,7 +26,7 @@
 #define ACNET_COMPAT_IF_MAX 16
 #define ACNET_COMPAT_SOCKET_MAX 128
 #define ACNET_COMPAT_DNS_MAX 8
-static char acnet_device_name[] = OPENSOCKET_DEVICE_PATH;
+static const char acnet_device_name[] = OPENSOCKET_DEVICE_PATH;
 
 static int ascii_equal(const char *a, const char *b)
 {
