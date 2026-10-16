@@ -15,8 +15,16 @@
 int start(void) { return -1; }
 
 static const char lib_name[] = ACNETWORK_LIBRARY_NAME;
-static const char lib_id[] = "opensocket.library 1.0 (4.10.2026) OpenSocket (AmigaChrome)\r\n";
-static const char lib_ver[] __attribute__((used)) = "$VER: opensocket.library 1.0 (4.10.2026) OpenSocket (AmigaChrome)";
+/* ACNETWORK_LIBRARY_REVISION may be raised at build time (-D), as the
+ * device's may (acnet_device.c). */
+#ifndef ACNETWORK_LIBRARY_REVISION
+#define ACNETWORK_LIBRARY_REVISION 1
+#endif
+#define LIB_STR2(x) #x
+#define LIB_STR(x) LIB_STR2(x)
+#define LIB_VR LIB_STR(ACNETWORK_LIBRARY_VERSION) "." LIB_STR(ACNETWORK_LIBRARY_REVISION)
+static const char lib_id[] = "opensocket.library " LIB_VR " (16.10.2026) OpenSocket (AmigaChrome)\r\n";
+static const char lib_ver[] __attribute__((used)) = "$VER: opensocket.library " LIB_VR " (16.10.2026) OpenSocket (AmigaChrome)";
 
 /* The RomTag near the start, its table defined at the end. A RomTag that
  * ends exactly where the hunk ends is not found when the library is
@@ -95,7 +103,7 @@ static struct ACNetworkBase *lib_init(REG(d0, struct ACNetworkBase *base), REG(a
     base->lib.lib_Node.ln_Name = (char *)lib_name;
     base->lib.lib_Flags = LIBF_SUMUSED | LIBF_CHANGED;
     base->lib.lib_Version = ACNETWORK_LIBRARY_VERSION;
-    base->lib.lib_Revision = 0;
+    base->lib.lib_Revision = ACNETWORK_LIBRARY_REVISION;
     base->lib.lib_IdString = (APTR)lib_id;
     return base;
 }

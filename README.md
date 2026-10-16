@@ -11,14 +11,18 @@ The design is `docs/architecture/OPENSOCKET_DESIGN.md` in DalsinAI/amigachrome.
 
 ## Choosing the card
 
-`bsdsocket.library` chooses its backend once, when it starts: at its first `OpenLibrary`, which ramlib makes after DOS, so the choice can read the disk. The same code runs from `LIBS:` or from a ROM (`guest/network/acnet/build.sh module`). In this order:
+`bsdsocket.library` chooses its backend once, when it starts: at its first `OpenLibrary`, which ramlib makes after DOS, so the choice can read the disk. The same code runs from `LIBS:` or from a ROM (`guest/network/acnet/build.sh module`). The disk first, then the default:
 
-1. **OpenSocket's configuration** names a backend or a device: `ENV:OpenSocket/Interface`, or `ENVARC:OpenSocket/Interface` when ENV: has none. That backend is used.
-2. **The OpenSocket card is fitted** (expansion.library's `FindConfigDev`, Dalsin, product 6): Host, through `LIBS:opensocket.library` and `DEVS:Networks/opensocket.device`, both loaded from the disk.
-3. **A SANA-II interface is configured** in Roadshow's `DEVS:NetInterfaces/`: Direct, over the device that file names.
-4. **None of these:** the library's init keeps nothing. From a ROM, ramlib then goes on to `LIBS:bsdsocket.library`, so another stack on the disk (Roadshow, say) is opened as before; with none there, `OpenLibrary` fails, as with no stack at all.
+1. **A network driver or configuration on the disk** (Direct, OpenSocket's own stack, unless the configuration says otherwise):
+   - OpenSocket's configuration names a backend or a device: `ENV:OpenSocket/Interface`, or `ENVARC:OpenSocket/Interface` when ENV: has none. That backend is used;
+   - a SANA-II interface is configured in Roadshow's `DEVS:NetInterfaces/`: Direct, over the device that file names;
+   - a SANA-II driver is in `DEVS:Networks/`, other than OpenSocket's own (`opensocket*.device`, `acnet.device`): Direct, over its unit 0.
+2. **The default: the OpenSocket card is fitted** (expansion.library's `FindConfigDev`, Dalsin, product 6): Host, through `opensocket.library` and `opensocket.device`. In the open ROM both are built in; `LIBS:opensocket.library` or `DEVS:Networks/opensocket.device` on the disk is used instead only when its version.revision (`$VER`) is higher than the ROM's. On equal versions the ROM's stays. The chosen copy is started once, by the card layer, so every later open finds it in memory and nothing is started twice.
+3. **None of these:** the library's init keeps nothing. From a ROM, ramlib then goes on to `LIBS:bsdsocket.library`, so another stack on the disk (Roadshow, say) is opened as before; with none there, `OpenLibrary` fails, as with no stack at all.
 
-Once a backend is chosen, `OpenLibrary` does not fail for want of the network. A Host bridge that is down, or a missing `opensocket.library` or card driver, gives `ENETDOWN` from the socket calls.
+Once a backend is chosen, `OpenLibrary` does not fail for want of the network. A Host bridge that is down, or a missing `opensocket.library` or card driver, gives `ENETDOWN` from the socket calls; a SANA-II device that cannot be opened leaves Direct with its loopback interface only.
+
+**Addressing.** With no address configured, an interface comes up by DHCP. Under Direct that is OpenSocket's own DHCP client (lwIP's), which also takes the name servers the DHCP server offers. Under Host the addresses are the host's, and the host's resolver answers names: there is no Amiga-side interface to address, so DHCP has nothing to do there.
 
 The configuration files are lines of `keyword=value` (`keyword value` is read too); `#` or `;` starts a comment. No requester appears when ENV: or DEVS: has no such file.
 
@@ -33,6 +37,10 @@ The configuration files are lines of `keyword=value` (`keyword value` is read to
 
 From Roadshow's files only these documented keywords are read; the rest are skipped, and none of Roadshow's code is used. With no address set, Direct uses DHCP.
 
+### OpenSocketDirect
+
+Direct is OpenSocket's own TCP/IP stack: [lwIP](https://savannah.nongnu.org/projects/lwip/) 2.2.1 (ARP, IPv4, ICMP, UDP, TCP, DHCP and DNS), under its own BSD licence (`guest/network/acnet/direct/lwip/COPYING`), with OpenSocket's SANA-II interface and socket layer around it (`guest/network/acnet/direct/`). It answers the same commands as the bridge, so programs see the same socket API. It keeps writable globals, so it is built as a hunk image of its own, which `bsdsocket.library` carries as data and loads into RAM when Direct is chosen; the library itself stays ROM-clean.
+
 ### On a real Amiga with its own network card
 
 Install the card's SANA-II driver in `DEVS:Networks/` as its maker says. Then either keep the Roadshow interface file you have (`DEVS:NetInterfaces/a2065` with `device=a2065.device` and `configure=dhcp`, say), or write `ENV:OpenSocket/Interface` (and `ENVARC:`):
@@ -44,7 +52,9 @@ unit=0
 configure=dhcp
 ```
 
-To keep using Roadshow, or any other stack, as before, put `backend=none` in `ENVARC:OpenSocket/Interface`, or leave the machine with no OpenSocket card and no interface file: OpenSocket's library then steps aside and the disk's `bsdsocket.library` answers.
+A driver in `DEVS:Networks/` alone is enough: with no file naming it, Direct brings its unit 0 up by DHCP.
+
+To keep using Roadshow, or any other stack, as before, put `backend=none` in `ENVARC:OpenSocket/Interface`: OpenSocket's library then steps aside and the disk's `bsdsocket.library` answers. (A Roadshow interface file or a driver in `DEVS:Networks/` alone now chooses OpenSocket's own stack.)
 
 ## The parts
 
@@ -91,7 +101,7 @@ A request, not a condition: if you fork or ship OpenSocket, please say it is bas
 
 Inside the project, a few files keep their own licences:
 - `tools/actcptools/src/ping.c`, `traceroute.c` and `arp.c` derive from 4.4BSD-Lite2 (through Olaf Barthel's Amiga ports) and keep the University of California's licence and notices (`tools/actcptools/THIRD_PARTY.md`).
-- lwIP, when OpenSocketDirect brings it in, keeps its own BSD licence and notice.
+- `guest/network/acnet/direct/lwip/` is lwIP 2.2.1, unchanged, and keeps its own BSD licence and notices (`lwip/COPYING`, Swedish Institute of Computer Science).
 
 AmigaOS/NDK material is not included and remains subject to its own licensing terms.
 

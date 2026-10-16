@@ -19,7 +19,7 @@ Copyright (c) 2026 Dalsin Limited, released under the MIT licence (`LICENSE`).
 
 ## Third-party work in this repository
 
-Three of the network tools start from other people's code. They keep their
+OpenSocketDirect's TCP/IP core and three of the network tools are other people's code. They keep their
 own copyright and licence; `tools/actcptools/THIRD_PARTY.md` and the notice
 at the top of each file carry the formal terms.
 
@@ -28,6 +28,7 @@ at the top of each file carry the formal terms.
 | `ping`, from 4.4BSD-Lite2 through the Amiga port for Roadshow | `tools/actcptools/src/ping.c` | Mike Muuss, the Regents of the University of California; Amiga port by Olaf Barthel | BSD (University of California, with the advertising clause); Olaf Barthel's changes public domain |
 | `traceroute`, likewise | `tools/actcptools/src/traceroute.c` | Van Jacobson, the Regents of the University of California; Amiga port by Olaf Barthel | As above |
 | `arp`, likewise | `tools/actcptools/src/arp.c` | Sun Microsystems, Inc., the Regents of the University of California; Amiga port by Olaf Barthel | As above |
+| lwIP 2.2.1 (`STABLE-2_2_1_RELEASE`), unchanged | `guest/network/acnet/direct/lwip/` | Adam Dunkels, the Swedish Institute of Computer Science, and lwIP's contributors | BSD (3-clause), `lwip/COPYING` |
 
 The other tools are our own and none is derived from another implementation.
 

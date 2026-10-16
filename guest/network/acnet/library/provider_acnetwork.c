@@ -1,6 +1,7 @@
 /* bsdsocket.library's Host backend: the calls go through opensocket.library
  * (acnetwork.library), opensocket.device and the OpenSocket card to the
- * host's sockets. Both are opened from disk (LIBS:, DEVS:Networks/). Once
+ * host's sockets. Each is the ROM's, or the disk's when that is newer: the
+ * card layer chose and started them (card.c). Once
  * the card layer has chosen Host, an open never fails here: with either
  * file missing, or the bridge down, each call answers ENETDOWN.
  * MIT. */
@@ -43,7 +44,9 @@ static inline ULONG net_signalmask(struct Library *lib)
 
 LONG host_open(struct SocketBase *sb)
 {
-    sb->network = OpenLibrary(ACNETWORK_LIBRARY_NAME, ACNETWORK_LIBRARY_VERSION);
+    sb->network = OpenLibrary(sb->shared->card.lib_disk ? (STRPTR)"LIBS:" ACNETWORK_LIBRARY_NAME
+                                                        : (STRPTR)ACNETWORK_LIBRARY_NAME,
+                              ACNETWORK_LIBRARY_VERSION);
     if (!sb->network) return 0;                /* each call: ENETDOWN */
     sb->provider_sigmask = net_signalmask(sb->network);
     if (!sb->provider_sigmask) {

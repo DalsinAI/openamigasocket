@@ -87,9 +87,23 @@ static inline struct ExecBase *osd_sysbase(void)
  * in the file: build.sh keeps source order (-fno-toplevel-reorder). */
 int start(void) { return -1; }
 
-static const char dev_name[] = OPENSOCKET_DEVICE_NAME;
-static const char dev_id[] = "opensocket.device 1.0 (4.10.2026) OpenSocket (AmigaChrome)\r\n";
-static const char ver[] __attribute__((used)) = "$VER: opensocket.device 1.0 (4.10.2026) OpenSocket (AmigaChrome)";
+/* ACNET_DEVICE_NODE_NAME may name it otherwise at build time (-D), so a
+ * test can install it in DEVS:Networks/ as a SANA-II driver that is not
+ * OpenSocket's own (the card layer's Direct test). */
+#ifndef ACNET_DEVICE_NODE_NAME
+#define ACNET_DEVICE_NODE_NAME OPENSOCKET_DEVICE_NAME
+#endif
+static const char dev_name[] = ACNET_DEVICE_NODE_NAME;
+/* ACNET_DEVICE_REVISION may be raised at build time (-D), for a test of
+ * the card layer's version choice (bsdsocket.library, card.c). */
+#ifndef ACNET_DEVICE_REVISION
+#define ACNET_DEVICE_REVISION 1
+#endif
+#define DEV_STR2(x) #x
+#define DEV_STR(x) DEV_STR2(x)
+#define DEV_VR DEV_STR(ACNET_DEVICE_VERSION) "." DEV_STR(ACNET_DEVICE_REVISION)
+static const char dev_id[] = "opensocket.device " DEV_VR " (16.10.2026) OpenSocket (AmigaChrome)\r\n";
+static const char ver[] __attribute__((used)) = "$VER: opensocket.device " DEV_VR " (16.10.2026) OpenSocket (AmigaChrome)";
 
 #define R(off) (*(volatile ULONG *)(b->card + (off)))
 
@@ -160,8 +174,10 @@ static BOOL copy_callback(APTR fn, APTR to, APTR from, ULONG n)
     register APTR a1 __asm("a1") = from;
     register APTR a2 __asm("a2") = fn;
     register ULONG d0 __asm("d0") = n;
-    __asm volatile ("jsr (%%a2)" : "+r"(d0) : "r"(a0), "r"(a1), "r"(a2)
-                    : "d1", "a3", "cc", "memory");
+    /* The callback is a C function: d0, d1, a0 and a1 are its scratch
+     * registers, so a0 and a1 are outputs here too, not inputs only. */
+    __asm volatile ("jsr (%%a2)" : "+r"(d0), "+r"(a0), "+r"(a1) : "r"(a2)
+                    : "d1", "cc", "memory");
     return d0 != 0;
 }
 
@@ -928,7 +944,7 @@ static struct ACNetBase *dev_init(REG(d0, struct ACNetBase *b), REG(a0, BPTR seg
     b->lib.lib_Node.ln_Name = (char *)dev_name;
     b->lib.lib_Flags = LIBF_SUMUSED | LIBF_CHANGED;
     b->lib.lib_Version = ACNET_DEVICE_VERSION;
-    b->lib.lib_Revision = 0;
+    b->lib.lib_Revision = ACNET_DEVICE_REVISION;
     b->lib.lib_IdString = (APTR)dev_id;
     b->waiters.mlh_Head = (struct MinNode *)&b->waiters.mlh_Tail;
     b->waiters.mlh_Tail = NULL;
@@ -953,9 +969,9 @@ static const struct { ULONG size; const APTR *vectors; APTR data; APTR init; } d
 };
 const struct Resident dev_romtag = {
     RTC_MATCHWORD, (struct Resident *)&dev_romtag, (APTR)(&dev_romtag + 1),
-    /* amigachrome-guest (the open ROM): started by dos after DOS is up
-     * (RTF_AFTERDOS), so "DEVS:Networks/opensocket.device" opens it from
-     * memory; its init touches no hardware, so it costs nothing with the
-     * Network switch off */
-    RTF_AUTOINIT | RTF_AFTERDOS, ACNET_DEVICE_VERSION, NT_DEVICE, -120, (char *)dev_name, (char *)dev_id, (APTR)&dev_inittable,
+    /* No start class: in the open ROM (amigachrome-guest) nothing starts it
+     * at boot. bsdsocket.library's card layer starts it after DOS when the
+     * card is fitted and no newer opensocket.device is on the disk (card.c);
+     * then "DEVS:Networks/opensocket.device" opens it from memory. */
+    RTF_AUTOINIT, ACNET_DEVICE_VERSION, NT_DEVICE, -120, (char *)dev_name, (char *)dev_id, (APTR)&dev_inittable,
 };

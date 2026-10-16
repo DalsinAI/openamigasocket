@@ -16,13 +16,15 @@
 #include <exec/tasks.h>
 
 /* The device lives in DEVS:Networks/ (4 Oct 2026: ACNet became OpenSocket).
- * Openers try that first and then the old name, so a new program still works
- * on an install that has only acnet.device. 0, or OpenDevice's error. */
+ * Openers try that first, then the bare name (the open ROM's copy, which
+ * ramlib starts from its RomTag), then the old name, so a new program still
+ * works on an install that has only acnet.device. 0, or OpenDevice's error. */
 #define OPENSOCKET_DEVICE_NAME "opensocket.device"            /* its node name */
 #define OPENSOCKET_DEVICE_PATH "DEVS:Networks/opensocket.device"
 #define OPENSOCKET_DEVICE_OLD  "acnet.device"
 #define OPENSOCKET_OPEN_DEVICE(io) \
     (OpenDevice((STRPTR)OPENSOCKET_DEVICE_PATH, 0, (struct IORequest *)(io), 0) == 0 ? 0 : \
+     OpenDevice((STRPTR)OPENSOCKET_DEVICE_NAME, 0, (struct IORequest *)(io), 0) == 0 ? 0 : \
      OpenDevice((STRPTR)OPENSOCKET_DEVICE_OLD, 0, (struct IORequest *)(io), 0))
 #define ACNET_DEVICE_VERSION 1
 

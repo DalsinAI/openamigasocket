@@ -1,28 +1,98 @@
 /* bsdsocket.library's Direct backend: OpenSocketDirect, OpenSocket's own
- * TCP/IP stack over the SANA-II device the card layer chose (card.c). Not
- * built yet: until it is, the library still opens, and every call answers
- * ENOSYS ("Function not implemented") at once, so a program reports it and
- * nothing waits. MIT. */
+ * TCP/IP stack (lwIP) over the SANA-II device the card layer chose (card.c).
+ *
+ * The stack keeps writable globals, so it is not linked into the library:
+ * the library carries it as a hunk image (direct_image.c, made by
+ * direct/build.sh) and loads it into RAM with romseg.c at the init, when
+ * Direct is chosen. The library itself keeps nothing writable, so it still
+ * runs from the ROM. The stack then stays for the library's life.
+ *
+ * Each opener gets a signal of its own; the stack signals it, while armed,
+ * whenever anything happens on any socket, and the front end polls again.
+ * With no stack (memory ran out), every call answers ENETDOWN. MIT. */
 #include <exec/types.h>
+#include <exec/memory.h>
+#include <exec/resident.h>
 #include <proto/exec.h>
 
 #include "provider.h"
+#include "card.h"
+#include "direct.h"
+#include "romseg.h"
 
-#define ENOSYS 78
+#define ENETDOWN 50
+#define ENOMEM   12
 
-LONG direct_open(struct SocketBase *sb) { (void)sb; return 0; }
+extern const unsigned long direct_image_longs;
+extern const unsigned long direct_image[];
 
-void direct_close(struct SocketBase *sb) { (void)sb; }
+struct DirectLoaded {
+    BPTR seglist;
+    const struct DirectOps *ops;
+    APTR stack;
+};
+
+#define LOADED(sb) ((struct DirectLoaded *)(sb)->shared->direct)
+
+/* From the init (lib_base.c), when the card layer chose Direct. */
+void direct_load(struct SocketShared *sh)
+{
+    struct DirectLoaded *d = AllocMem(sizeof(*d), MEMF_PUBLIC | MEMF_CLEAR);
+    struct Resident *rt;
+    if (!d) return;
+    d->seglist = rs_load((const ULONG *)direct_image, direct_image_longs);
+    rt = d->seglist ? rs_romtag(d->seglist) : NULL;
+    if (rt) d->ops = (const struct DirectOps *)rt->rt_Init;
+    if (!d->ops || d->ops->magic != DIRECT_MAGIC || d->ops->version != DIRECT_VERSION ||
+        !(d->stack = d->ops->start(&sh->card))) {
+        if (d->seglist) rs_unload(d->seglist);
+        FreeMem(d, sizeof(*d));
+        return;
+    }
+    sh->direct = d;
+}
+
+LONG direct_open(struct SocketBase *sb)
+{
+    if (!LOADED(sb)) return 0;                 /* each call: ENETDOWN */
+    sb->sigbit = AllocSignal(-1);
+    if (sb->sigbit < 0) return ENOMEM;
+    sb->provider_sigmask = 1UL << sb->sigbit;
+    return 0;
+}
+
+void direct_close(struct SocketBase *sb)
+{
+    if (LOADED(sb)) LOADED(sb)->ops->disarm(LOADED(sb)->stack, sb->owner);
+    if (sb->sigbit >= 0) FreeSignal(sb->sigbit);
+    sb->sigbit = -1;
+    sb->provider_sigmask = 0;
+}
 
 LONG direct_call(struct SocketBase *sb, ULONG cmd, ULONG a0, ULONG a1, ULONG a2, ULONG a3,
                  const void *tx, ULONG txlen, void *rx, ULONG rxmax, ULONG *rxlen)
 {
-    (void)cmd; (void)a0; (void)a1; (void)a2; (void)a3; (void)tx; (void)txlen; (void)rx; (void)rxmax;
-    sb->last_err = ENOSYS;
-    if (rxlen) *rxlen = 0;
-    return -1;
+    struct DirectLoaded *d = LOADED(sb);
+    ULONG err = 0, n = 0;
+    LONG r;
+    if (!d) {
+        sb->last_err = ENETDOWN;
+        if (rxlen) *rxlen = 0;
+        return -1;
+    }
+    r = d->ops->call(d->stack, cmd, a0, a1, a2, a3, tx, txlen, rx, rxmax, &n, &err);
+    sb->last_err = err;
+    if (rxlen) *rxlen = n;
+    return r;
 }
 
-void direct_arm(struct SocketBase *sb) { (void)sb; }
+void direct_arm(struct SocketBase *sb)
+{
+    if (LOADED(sb) && sb->provider_sigmask)
+        LOADED(sb)->ops->arm(LOADED(sb)->stack, sb->owner, sb->provider_sigmask);
+}
 
-void direct_disarm(struct SocketBase *sb) { (void)sb; }
+void direct_disarm(struct SocketBase *sb)
+{
+    if (LOADED(sb)) LOADED(sb)->ops->disarm(LOADED(sb)->stack, sb->owner);
+}

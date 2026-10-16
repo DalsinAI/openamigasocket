@@ -30,6 +30,7 @@ LONG host_call(struct SocketBase *sb, ULONG cmd, ULONG a0, ULONG a1, ULONG a2, U
                const void *tx, ULONG txlen, void *rx, ULONG rxmax, ULONG *rxlen);
 void host_arm(struct SocketBase *sb);
 void host_disarm(struct SocketBase *sb);
+void direct_load(struct SocketShared *sh);   /* the init: load and start the stack */
 LONG direct_open(struct SocketBase *sb);
 void direct_close(struct SocketBase *sb);
 LONG direct_call(struct SocketBase *sb, ULONG cmd, ULONG a0, ULONG a1, ULONG a2, ULONG a3,

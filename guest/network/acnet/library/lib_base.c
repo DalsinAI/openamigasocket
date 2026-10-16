@@ -38,6 +38,7 @@ static struct SocketBase *lib_init(REG(d0, struct SocketBase *b), REG(a0, BPTR s
         FreeMem((UBYTE *)b - b->lib.lib_NegSize, b->lib.lib_NegSize + b->lib.lib_PosSize);
         return NULL;
     }
+    if (b->shared->card.backend == BACKEND_DIRECT) direct_load(b->shared);
     b->shared->next_id = 1;
     b->lib.lib_Node.ln_Type = NT_LIBRARY;
     b->lib.lib_Node.ln_Name = (char *)lib_name;
