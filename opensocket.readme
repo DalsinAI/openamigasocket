@@ -1,6 +1,6 @@
 Short:        Free bsdsocket.library and net tools
 Uploader:     (We fill this in at upload time)
-Author:       Dalsin Limited
+Author:       AmigaChrome Team
 Type:         comm/tcp
 Version:      1.0
 Requires:     AmigaOS 3.2.3, an AmigaChrome machine (see below)
@@ -42,10 +42,10 @@ bsdsocket.library. On an older install it falls back to acnet.device.
 
 Licence
 -------
-MIT. Copyright (c) 2026 Dalsin Limited. Use it, change it, fork it and
+MIT. Copyright (c) 2026 AmigaChrome Team. Use it, change it, fork it and
 pass it on, free; the copyright and licence notice stays with every
-copy. If you fork it, please say it is based on OpenSocket by Dalsin
-Limited (a request, not a condition).
+copy. If you fork it, please say it is based on OpenSocket by the AmigaChrome
+Team (a request, not a condition).
 
 ping, traceroute and arp come from 4.4BSD-Lite2 through Olaf Barthel's
 Amiga ports and keep their own licence: this product includes software

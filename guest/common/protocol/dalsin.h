@@ -1,4 +1,4 @@
-/* Dalsin: AmigaChrome's own Zorro manufacturer number, 0xDA15 (55829),
+/* AmigaChrome Team: AmigaChrome's own Zorro manufacturer number, 0xDA15 (55829),
  * from 1 October 2026. Before that the boards used 2011, the number UAE and
  * home-made test boards share (ShowConfig calls it "UAE Amiga Emulator",
  * Linux's zorro.ids "Hacker Test Board"). 0xDA15 is in neither list.
@@ -6,9 +6,9 @@
  * Products stay as they were: 1 ACBridge control, 2 ACStorage, 9 ACRTG,
  * 11 AC090's RAM.
  *
- * Drivers look for Dalsin first, then 2011, so one build works with either.
+ * Drivers look for the AmigaChrome Team first, then 2011, so one build works with either.
  * A boot ROM whose drivers do carries DALSIN_ROM_MARK; the runtime presents
- * Dalsin to a ROM that has it and 2011 to one built before. */
+ * AmigaChrome Team to a ROM that has it and 2011 to one built before. */
 #ifndef AMIGACHROME_DALSIN_H
 #define AMIGACHROME_DALSIN_H
 

@@ -3,7 +3,7 @@
 > **Renamed 4 October 2026.** ACNet is now OpenSocket: `acnet.device` is `DEVS:Networks/opensocket.device`, `acnetwork.library` is `opensocket.library`, `acwifi.device` is `opensocketwifi.device`, ACNetControlGT is OpenSocketControl (the ReAction version is retired), `acnetctl` is `C:OpenSocket`, the tools are in `SYS:Tools/OpenSocket/` and the interface is `opensocket0`. The current design is `docs/architecture/OPENSOCKET_DESIGN.md` in DalsinAI/amigachrome. The entries below keep the names of their time.
 
 **Status:** Complete-stack code built; consolidated live qualification pending · **Date:** 3 October 2026 · **Guest branch:** `feature/complete-stack-20261003` · **Host branch:** `net/complete-stack-20261003`
-**Created by** Dalsin Limited, in collaboration with Thufir Hawat.
+**Created by** AmigaChrome Team, in collaboration with Thufir Hawat.
 
 This is the build design. It takes the 30 September designs (capsules ACNet BSDSocket CX Design and ACNet FastPath HostSocket ACNetDev SANA2) and fixes the shape we set on 1 October.
 
@@ -13,7 +13,7 @@ This is the build design. It takes the 30 September designs (capsules ACNet BSDS
 | --- | --- |
 | `LIBS:bsdsocket.library` | Classic Amiga BSD-socket compatibility facade. The core v4 ABI now has all 46 application vectors implemented; optional Roadshow-shaped compatibility lives behind the reserved guard tail. |
 | `LIBS:acnetwork.library` | Native AmigaChrome networking boundary below `bsdsocket.library`. Native AC software may call it directly for status, interfaces, routes, neighbours, DNS, sockets and control without inheriting legacy BSD policy. |
-| ACNet, the card | A Zorro II card in the autoconfig chain: Dalsin, product 6, 64 KB. ShowConfig and SysInfo list it. It is fitted while the instance's Network switch is on. |
+| ACNet, the card | A Zorro II card in the autoconfig chain: AmigaChrome Team, product 6, 64 KB. ShowConfig and SysInfo list it. It is fitted while the instance's Network switch is on. |
 | `DEVS:acnet.device` | The one driver that touches the card's HostSocket block. It owns the lock and the interrupt and wakes waiting tasks. It gives the library private direct calls, with no I/O request per packet. |
 | `DEVS:acwifi.device` | Control of the host's Wi-Fi through the same card: scan, status, join, leave, forget. |
 | ACNetControl | ReAction Commodity with Status, Wi-Fi, Connections, Diagnostics and Log pages. Live status/connection views, Refresh, soft online/offline, DNS lookup, TCP connect test and support-report save are implemented. To be replaced by ACNetControlGT once that has the same pages (AmigaOS 3.x programs are GadTools or MUI). |
@@ -46,7 +46,7 @@ HostSocket backs the fast application-socket path, while the SANA-II/BPF path us
 1. **The library first.** OS 3.2.3 programs reach the network through ACNet's `bsdsocket.library`. A SANA-II card is not on its path.
 2. **Off until switched on.** Each instance has a Network switch in Cradle's hardware panel. The library still opens with the switch off, and reports the network down (ENETDOWN).
 3. **Internet and LAN, not this PC.** 127.0.0.1 is the Amiga's own loopback. The PC's own addresses are refused, which keeps out Cradle, other instances' bridges and other services on the PC.
-4. **Two drivers, one card.** `acnet.device` and `acwifi.device` both talk to ACNet, which shows in autoconfig as a card in its own right (Dalsin product 6, the number main reserved for networking). We added this on 1 October. Its top half is kept for the later packet rings. Product 8 stays reserved.
+4. **Two drivers, one card.** `acnet.device` and `acwifi.device` both talk to ACNet, which shows in autoconfig as a card in its own right (AmigaChrome Team product 6, the number main reserved for networking). We added this on 1 October. Its top half is kept for the later packet rings. Product 8 stays reserved.
 5. **One Commodity**, ACNetControl, written in ReAction, with a Wi-Fi tab. ReAction ships with OS 3.2.3 and NDK 3.2 has its headers; MUI would be a third-party install. This merges the 30 September design's two Commodities. ACNetControlGT (4 October) shows the same pages in GadTools for machines without ReAction; both draw from `control/acnetcontrol_core.c` and register the same broker, so only one runs.
 6. **Host Wi-Fi control is a separate per-instance permission, off by default.** Joining a network changes the whole PC's Wi-Fi.
 7. **No paid licence and no weak spots.** The library must pass bsdsocktest and a matrix of real programs before release.
@@ -66,7 +66,7 @@ HostSocket backs the fast application-socket path, while the SANA-II/BPF path us
 
 ## 4. acnet.device
 
-- It finds the ACNet card (Dalsin $DA15, or 2011 for older ROMs, product 6) through expansion.library. It checks the HostSocket block's signature ("ACH1") and version, then adds one INT2 server. With no card it opens anyway and reports the network absent.
+- It finds the ACNet card (AmigaChrome Team $DA15, or 2011 for older ROMs, product 6) through expansion.library. It checks the HostSocket block's signature ("ACH1") and version, then adds one INT2 server. With no card it opens anyway and reports the network absent.
 - **Private calls** (vectors after the standard device ones):
   - `ACN_Call`: one command. It writes the arguments, copies the transmit buffer, starts the command and copies the answer, all under Forbid().
   - `ACN_AddWaiter` and `ACN_RemWaiter`: a task and its signal, woken on each event.
@@ -109,7 +109,7 @@ HostSocket backs the fast application-socket path, while the SANA-II/BPF path us
 
 ## 8. The board
 
-ACNet is a 64 KB Zorro II card: Dalsin $DA15 (or 2011, as ACBridge), product 6, serial 1. It comes after ACStorage in the chain. It is fitted when the runtime starts with `-n`, and the bridge fits or pulls it from the next reset with input record 12, as the Network switch changes. Turning the switch off takes the network down at once; the card goes at the next reboot.
+ACNet is a 64 KB Zorro II card: AmigaChrome Team $DA15 (or 2011, as ACBridge), product 6, serial 1. It comes after ACStorage in the chain. It is fitted when the runtime starts with `-n`, and the bridge fits or pulls it from the next reset with input record 12, as the Network switch changes. Turning the switch off takes the network down at once; the card goes at the next reboot.
 
 HostSocket's block starts at the card's base:
 - registers at $0000 to $00FF;
