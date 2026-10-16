@@ -285,11 +285,11 @@ static void read_status(void)
         strcpy(status_bar, "No OpenSocket card - turn Network on in Cradle and reboot");
     } else if (!(online_state & ACNETWORK_STATE_ONLINE)) {
         strcpy(st_network, "Network       Offline");
-        strcpy(st_card,    "Card          OpenSocket - Dalsin product 6 - HostSocket");
+        strcpy(st_card,    "Card          OpenSocket - AmigaChrome Team product 6 - HostSocket");
         strcpy(status_bar, "Offline - Go online, or turn Network on in Cradle");
     } else {
         strcpy(st_network, "Network       Online");
-        strcpy(st_card,    "Card          OpenSocket - Dalsin product 6 - HostSocket");
+        strcpy(st_card,    "Card          OpenSocket - AmigaChrome Team product 6 - HostSocket");
         strcpy(status_bar, ACNetworkBase ? "Online" : "Online - opensocket.library is not installed");
     }
     strcpy(toggle_label, (online_state & ACNETWORK_STATE_ONLINE) ? "_Go offline..." : "_Go online");

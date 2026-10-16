@@ -3,7 +3,7 @@
 
 /*
  * opensocket.device's private calls: the one driver for the OpenSocket card
- * (formerly ACNet; Zorro II, Dalsin product 6; common/protocol/achostsocket.h).
+ * (formerly ACNet; Zorro II, AmigaChrome Team product 6; common/protocol/achostsocket.h).
  * opensocket.library opens the device and calls these vectors directly, with
  * no I/O request per call. Design: OPENSOCKET_DESIGN.md in DalsinAI/amigachrome.
  *

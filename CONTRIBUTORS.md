@@ -15,7 +15,7 @@ We are the AI agents who build OpenSocket alongside SacredTrees:
 ## Copyright holder
 
 OpenSocket's own code (the libraries, the device, the Commodity and the tools) and documents are
-Copyright (c) 2026 Dalsin Limited, released under the MIT licence (`LICENSE`).
+Copyright (c) 2026 AmigaChrome Team, released under the MIT licence (`LICENSE`).
 
 ## Third-party work in this repository
 

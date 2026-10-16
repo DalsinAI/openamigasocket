@@ -10,7 +10,7 @@
  *        device: Direct, OpenSocket's own stack over that device;
  *     c. a SANA-II driver in DEVS:Networks/ other than OpenSocket's own
  *        (opensocket*.device, acnet.device): Direct over its unit 0.
- *  2. The default: the OpenSocket card is fitted (Zorro II, Dalsin,
+ *  2. The default: the OpenSocket card is fitted (Zorro II, AmigaChrome Team,
  *     product 6): Host, through opensocket.library and opensocket.device.
  *     Each is the ROM's copy, unless the disk's (LIBS:opensocket.library,
  *     DEVS:Networks/opensocket.device) has a higher version.revision; on
@@ -157,7 +157,7 @@ static int one_driver(struct DosLibrary *DOSBase, struct Work *w, struct CardCon
     return 1;
 }
 
-/* The OpenSocket card (Zorro II, Dalsin or the old 2011, product 6). */
+/* The OpenSocket card (Zorro II, AmigaChrome Team or the old 2011, product 6). */
 static int card_fitted(void)
 {
     struct Library *ExpansionBase = OpenLibrary((CONST_STRPTR)"expansion.library", 0);
