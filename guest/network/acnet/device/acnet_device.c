@@ -87,7 +87,13 @@ static inline struct ExecBase *osd_sysbase(void)
  * in the file: build.sh keeps source order (-fno-toplevel-reorder). */
 int start(void) { return -1; }
 
-static const char dev_name[] = OPENSOCKET_DEVICE_NAME;
+/* ACNET_DEVICE_NODE_NAME may name it otherwise at build time (-D), so a
+ * test can install it in DEVS:Networks/ as a SANA-II driver that is not
+ * OpenSocket's own (the card layer's Direct test). */
+#ifndef ACNET_DEVICE_NODE_NAME
+#define ACNET_DEVICE_NODE_NAME OPENSOCKET_DEVICE_NAME
+#endif
+static const char dev_name[] = ACNET_DEVICE_NODE_NAME;
 /* ACNET_DEVICE_REVISION may be raised at build time (-D), for a test of
  * the card layer's version choice (bsdsocket.library, card.c). */
 #ifndef ACNET_DEVICE_REVISION
@@ -169,9 +175,7 @@ static BOOL copy_callback(APTR fn, APTR to, APTR from, ULONG n)
     register APTR a2 __asm("a2") = fn;
     register ULONG d0 __asm("d0") = n;
     /* The callback is a C function: d0, d1, a0 and a1 are its scratch
-     * registers, so a0 and a1 are outputs here too. With them as inputs only,
-     * gcc kept the frame's address in a0 across the call, and CMD_WRITE sent
-     * the wrong bytes (no ARP reply came back on t5-net, 16 Oct 2026). */
+     * registers, so a0 and a1 are outputs here too, not inputs only. */
     __asm volatile ("jsr (%%a2)" : "+r"(d0), "+r"(a0), "+r"(a1) : "r"(a2)
                     : "d1", "cc", "memory");
     return d0 != 0;

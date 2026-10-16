@@ -37,6 +37,8 @@ L="$HERE/library"
 LIB="$L/lib_base.c $L/lib_fd.c $L/lib_errno.c $L/lib_tags.c $L/lib_strings.c $L/lib_select.c $L/lib_conn.c $L/lib_io.c $L/lib_opt.c $L/lib_names.c $L/lib_inet.c $HERE/compat/roadshow/routes.c $HERE/compat/roadshow/state.c $HERE/compat/roadshow/modern.c $HERE/compat/roadshow/bpf.c"
 # the card layer and the backends behind it (no bsd_ vectors in these)
 PROV="$L/card.c $L/card_parse.c $L/provider.c $L/provider_acnetwork.c $L/provider_direct.c"
+# Direct's stack (direct/, lwIP): built as a hunk image of its own, which
+# the library carries as data (direct_image.c) and loads into RAM (romseg.c)
 
 # nothing written but the bases: the same code runs from LIBS: or a ROM.
 # Each check reads the unstripped link: the data and BSS symbols, then the
@@ -58,8 +60,9 @@ if [ "$TARGET" = module ]; then
     mkdir -p "$OUT/modules"
     python3 "$HERE/library/gen_vectors.py" "$ABI" "$OUT/bsdsocket_vectors.c" $LIB --guard "$GUARD"
     MBARE=$(echo "$BARE" | sed "s/ -O2 / $OPT /")
-    "$CC" $MBARE $INC $COMPAT_INC -I"$HERE/library" -I"$OUT" -o "$OUT/modules/bsdsocket.module" \
-        $LIB $PROV "$OUT/bsdsocket_vectors.c" "$GUEST/common/os3/string.c" -lgcc
+    STOVE="$STOVE" OPT="$OPT" sh "$HERE/direct/build.sh" "$OUT/direct"
+    "$CC" $MBARE $INC $COMPAT_INC -I"$HERE/library" -I"$HERE/direct" -I"$OUT" -o "$OUT/modules/bsdsocket.module" \
+        $LIB $PROV "$HERE/direct/romseg.c" "$OUT/direct/direct_image.c" "$OUT/bsdsocket_vectors.c" "$GUEST/common/os3/string.c" -lgcc
     no_data "$OUT/modules/bsdsocket.module"
     echo "$OUT/modules/bsdsocket.module ($(wc -c < "$OUT/modules/bsdsocket.module") bytes, $OPT)"
     exit 0
@@ -71,8 +74,9 @@ echo "$OUT/opensocket.device ($(wc -c < "$OUT/opensocket.device") bytes)"
 STOVE="$STOVE" "$GUEST/network/acnetwork/build.sh" "$OUT"
 
 python3 "$HERE/library/gen_vectors.py" "$ABI" "$OUT/bsdsocket_vectors.c" $LIB --guard "$GUARD"
-"$CC" $BARE $INC $COMPAT_INC -I"$HERE/library" -I"$OUT" -o "$OUT/bsdsocket.library" \
-    $LIB $PROV "$OUT/bsdsocket_vectors.c" "$GUEST/common/os3/string.c" -lgcc
+STOVE="$STOVE" sh "$HERE/direct/build.sh" "$OUT/direct"
+"$CC" $BARE $INC $COMPAT_INC -I"$HERE/library" -I"$HERE/direct" -I"$OUT" -o "$OUT/bsdsocket.library" \
+    $LIB $PROV "$HERE/direct/romseg.c" "$OUT/direct/direct_image.c" "$OUT/bsdsocket_vectors.c" "$GUEST/common/os3/string.c" -lgcc
 no_data "$OUT/bsdsocket.library"
 echo "$OUT/bsdsocket.library ($(wc -c < "$OUT/bsdsocket.library") bytes)"
 
@@ -109,6 +113,11 @@ if [ -f "$HERE/tests/sana2probe.c" ]; then
     "$CC" -m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul $INC $COMPAT_INC \
         -o "$OUT/sana2probe" "$HERE/tests/sana2probe.c"
     echo "$OUT/sana2probe ($(wc -c < "$OUT/sana2probe") bytes)"
+fi
+if [ -f "$HERE/tests/directprobe.c" ]; then
+    "$CC" -m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-format -noixemul $COMPAT_INC \
+        -o "$OUT/directprobe" "$HERE/tests/directprobe.c"
+    echo "$OUT/directprobe ($(wc -c < "$OUT/directprobe") bytes)"
 fi
 
 # OpenSocketControl: the Commodity, in GadTools on the shared core (AmigaOS
