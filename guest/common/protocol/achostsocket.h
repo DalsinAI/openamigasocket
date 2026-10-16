@@ -25,9 +25,9 @@
  * the Amiga's too: the host maps them.
  */
 
-#include "dalsin.h"
-#define ACNET_MANUFACTURER        DALSIN_MANUFACTURER
-#define ACNET_MANUFACTURER_OLD    DALSIN_MANUFACTURER_OLD   /* looked for too */
+#include "amigachrome_zorro.h"
+#define ACNET_MANUFACTURER        AMIGACHROME_MANUFACTURER
+#define ACNET_MANUFACTURER_OLD    AMIGACHROME_MANUFACTURER_OLD   /* looked for too */
 #define ACNET_PRODUCT             6
 #define ACNET_APERTURE_SIZE       0x10000UL
 
