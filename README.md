@@ -101,7 +101,7 @@ A request, not a condition: if you fork or ship OpenSocket, please say it is bas
 
 Inside the project, a few files keep their own licences:
 - `tools/actcptools/src/ping.c`, `traceroute.c` and `arp.c` derive from 4.4BSD-Lite2 (through Olaf Barthel's Amiga ports) and keep the University of California's licence and notices (`tools/actcptools/THIRD_PARTY.md`).
-- lwIP, when OpenSocketDirect brings it in, keeps its own BSD licence and notice.
+- `guest/network/acnet/direct/lwip/` is lwIP 2.2.1, unchanged, and keeps its own BSD licence and notices (`lwip/COPYING`, Swedish Institute of Computer Science).
 
 AmigaOS/NDK material is not included and remains subject to its own licensing terms.
 
