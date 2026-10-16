@@ -114,3 +114,21 @@ LONG card_parse(struct CardConfig *cfg, const char *b, LONG n, int ours)
     return got;
 }
 
+
+/* A version string's "name V.R": V << 16 | R, or 0 when s (n bytes) does
+ * not hold one. s starts at the name, as a RomTag's IdString does, or as a
+ * "$VER: " string does after its "$VER: ". */
+ULONG card_version(const char *s, LONG n)
+{
+    LONG i = 0;
+    ULONG v = 0, r = 0;
+    int dv = 0, dr = 0;
+    while (i < n && is_space(s[i])) i++;
+    while (i < n && s[i] && !is_space(s[i])) i++;     /* the name */
+    while (i < n && is_space(s[i])) i++;
+    for (; i < n && s[i] >= '0' && s[i] <= '9' && dv < 5; i++, dv++) v = v * 10 + (s[i] - '0');
+    if (!dv || i >= n || s[i] != '.') return 0;
+    for (i++; i < n && s[i] >= '0' && s[i] <= '9' && dr < 5; i++, dr++) r = r * 10 + (s[i] - '0');
+    if (!dr || v > 0xffff || r > 0xffff) return 0;
+    return v << 16 | r;
+}

@@ -69,6 +69,13 @@ int main(void)
         CHECK(strlen(c.device) == CARD_DEVICE_MAX - 1);
     }
 
+    /* version strings: a RomTag's IdString, and a file's $VER after "$VER: " */
+    CHECK(card_version("opensocket.device 1.1 (16.10.2026) OpenSocket\r\n", 40) == (1UL << 16 | 1));
+    CHECK(card_version("opensocket.library 1.12 (x)", 27) == (1UL << 16 | 12));
+    CHECK(card_version("opensocket.device 2", 19) == 0);
+    CHECK(card_version("opensocket.device", 17) == 0);
+    CHECK(card_version("opensocket.device 3.0", 21) == (3UL << 16));
+
     printf("card_parse: %s (%d failed)\n", fails ? "FAIL" : "PASS", fails);
     return fails != 0;
 }
