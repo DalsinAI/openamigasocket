@@ -9,7 +9,7 @@ Networking must continue to work with ACNetControl absent, hidden or killed.
 
 ## Gate 0 - Build
 
-- Build with the OS3 stove as 68000 code.
+- Build with the OS3 stove as 68040 code.
 - `file` must identify `ACNetControl` as an AmigaOS LoadSeg binary.
 - Build must complete with no warnings.
 - Keep the binary below 40 KB for version 1.

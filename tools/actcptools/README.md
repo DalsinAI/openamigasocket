@@ -37,7 +37,7 @@ No ACTCPTool calls HostSocket, the device's private vectors, or AmigaChrome host
 | `httpget` | PASS | not yet run | http:// and, built with `AMISSL`, https:// with certificate checks (AmiSSL 5). Follows redirects, chunked transfers. |
 | `nc` | PASS | not yet run | Connect, listen (ports from 1024: the host refuses lower ones), UDP, and `-z` port scans. |
 
-All binaries target 68020 and AmigaOS 3.2.3. The nine newest (`host` to `nc`) share `src/ostool.c`: opening the library, lookups, a connect that gives up after a while, Ctrl-C, and a 16 KB stack of their own (`guest/common/os3/acnet_stack.c`). They use only the published bsdsocket.library interface, so they also run over other Amiga TCP/IP stacks.
+All binaries target 68040 and AmigaOS 3.2.3. The nine newest (`host` to `nc`) share `src/ostool.c`: opening the library, lookups, a connect that gives up after a while, Ctrl-C, and a 16 KB stack of their own (`guest/common/os3/acnet_stack.c`). They use only the published bsdsocket.library interface, so they also run over other Amiga TCP/IP stacks.
 ## Building
 
 Use the same placed OS 3.2.3 NDK and m68k-amigaos GCC stove as ACNet:

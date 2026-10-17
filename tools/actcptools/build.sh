@@ -2,6 +2,8 @@
 set -eu
 
 HERE=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+# soft float: link libnix's libm020, not libm881 (specs/m68k-soft-m68040.specs)
+SPECS="$(cd "$HERE/../.." && pwd)/specs/m68k-soft-m68040.specs"
 STOVE=${STOVE:-}
 if [ -z "$STOVE" ]; then
     echo "Set STOVE to the AmigaChrome OS 3.2 cross-build stove." >&2
@@ -10,7 +12,7 @@ fi
 
 CC="$STOVE/prefix/bin/m68k-amigaos-gcc"
 OUT=${1:-"$HERE/build"}
-CFLAGS="-m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul -I$HERE/../../guest/network/acnetwork/include"
+CFLAGS="-m68040 -specs=$SPECS -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul -I$HERE/../../guest/network/acnetwork/include"
 mkdir -p "$OUT"
 
 build_one() {
