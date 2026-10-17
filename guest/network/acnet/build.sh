@@ -29,7 +29,7 @@ ABI="$HERE/abi/bsdsocket-v4.json"
 GUARD="$HERE/compat/roadshow/guard-v4.json"
 if [ "$TARGET" = module ]; then OUT=${OUT:-$HERE/build-amiga}; else OUT=${1:-$GUEST/build/guest/os32/acnet}; fi
 mkdir -p "$OUT"
-BARE="-m68020 -O2 -fno-delete-null-pointer-checks -include sys/types.h -fomit-frame-pointer -fno-toplevel-reorder -fno-builtin -Wall -Wno-pointer-sign -nostartfiles -nostdlib"
+BARE="-m68040 -O2 -fno-delete-null-pointer-checks -include sys/types.h -fomit-frame-pointer -fno-toplevel-reorder -fno-builtin -Wall -Wno-pointer-sign -nostartfiles -nostdlib"
 INC="-I$GUEST/common/protocol -I$HERE/include -I$GUEST/network/acnetwork/include"
 COMPAT_INC="-I$STOVE/ndk/SANA+RoadshowTCP-IP/include"
 L="$HERE/library"
@@ -81,41 +81,41 @@ no_data "$OUT/bsdsocket.library"
 echo "$OUT/bsdsocket.library ($(wc -c < "$OUT/bsdsocket.library") bytes)"
 
 if [ -f "$HERE/tests/acnettest.c" ]; then
-    "$CC" -m68020 -O2 -fno-delete-null-pointer-checks -Wall -noixemul -o "$OUT/acnettest" "$HERE/tests/acnettest.c"
+    "$CC" -m68040 -O2 -fno-delete-null-pointer-checks -Wall -noixemul -o "$OUT/acnettest" "$HERE/tests/acnettest.c"
     echo "$OUT/acnettest ($(wc -c < "$OUT/acnettest") bytes)"
 fi
 
 if [ -f "$HERE/tests/bsdqual.c" ]; then
-    "$CC" -m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul -I"$GUEST/common/os3" -o "$OUT/bsdqual" \
+    "$CC" -m68040 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul -I"$GUEST/common/os3" -o "$OUT/bsdqual" \
         "$HERE/tests/bsdqual.c" "$GUEST/common/os3/acnet_stack.c"
     echo "$OUT/bsdqual ($(wc -c < "$OUT/bsdqual") bytes)"
 fi
 
 if [ -f "$HERE/tests/roadshow_readonly_probe.c" ]; then
-    "$CC" -m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul \
+    "$CC" -m68040 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul \
         -o "$OUT/roadshow-readonly-probe" "$HERE/tests/roadshow_readonly_probe.c"
     echo "$OUT/roadshow-readonly-probe ($(wc -c < "$OUT/roadshow-readonly-probe") bytes)"
 fi
 
 if [ -f "$HERE/tests/modern_compat_probe.c" ]; then
-    "$CC" -m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul \
+    "$CC" -m68040 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul \
         -o "$OUT/modern-compat-probe" "$HERE/tests/modern_compat_probe.c"
     echo "$OUT/modern-compat-probe ($(wc -c < "$OUT/modern-compat-probe") bytes)"
 fi
 
 if [ -f "$HERE/tests/bpfprobe.c" ]; then
-    "$CC" -m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul $COMPAT_INC \
+    "$CC" -m68040 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul $COMPAT_INC \
         -o "$OUT/bpfprobe" "$HERE/tests/bpfprobe.c"
     echo "$OUT/bpfprobe ($(wc -c < "$OUT/bpfprobe") bytes)"
 fi
 
 if [ -f "$HERE/tests/sana2probe.c" ]; then
-    "$CC" -m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul $INC $COMPAT_INC \
+    "$CC" -m68040 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul $INC $COMPAT_INC \
         -o "$OUT/sana2probe" "$HERE/tests/sana2probe.c"
     echo "$OUT/sana2probe ($(wc -c < "$OUT/sana2probe") bytes)"
 fi
 if [ -f "$HERE/tests/directprobe.c" ]; then
-    "$CC" -m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-format -noixemul $COMPAT_INC \
+    "$CC" -m68040 -O2 -fno-delete-null-pointer-checks -Wall -Wno-format -noixemul $COMPAT_INC \
         -o "$OUT/directprobe" "$HERE/tests/directprobe.c"
     echo "$OUT/directprobe ($(wc -c < "$OUT/directprobe") bytes)"
 fi
@@ -132,7 +132,7 @@ fi
 # Each address byte then printed as two numbers, so 192.168.x.x showed as
 # 0.192.0.168 (12 Oct 2026). The link map is checked for that below.
 if [ -f "$HERE/control/acnetcontrol_gt.c" ]; then
-    "$CC" -m68000 -O2 -fno-delete-null-pointer-checks -fno-common -Wall -Wno-pointer-sign -noixemul -I"$HERE/include" \
+    "$CC" -m68040 -O2 -fno-delete-null-pointer-checks -fno-common -Wall -Wno-pointer-sign -noixemul -I"$HERE/include" \
         -I"$GUEST/network/acnetwork/include" -I"$GUEST/network/acwifi/include" \
         -Wl,-Map="$OUT/OpenSocketControl.map" \
         -o "$OUT/OpenSocketControl" "$HERE/control/acnetcontrol_gt.c" "$HERE/control/acnetcontrol_core.c"

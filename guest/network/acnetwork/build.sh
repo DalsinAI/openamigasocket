@@ -11,7 +11,7 @@ fi
 CC="$STOVE/prefix/bin/m68k-amigaos-gcc"
 OUT=${1:-$GUEST/build/guest/os32/acnet}
 mkdir -p "$OUT"
-BARE="-m68020 -O2 -fno-delete-null-pointer-checks -include sys/types.h -fomit-frame-pointer -fno-toplevel-reorder -fno-builtin -Wall -Wno-pointer-sign -nostartfiles -nostdlib"
+BARE="-m68040 -O2 -fno-delete-null-pointer-checks -include sys/types.h -fomit-frame-pointer -fno-toplevel-reorder -fno-builtin -Wall -Wno-pointer-sign -nostartfiles -nostdlib"
 INC="-I$GUEST/common/protocol -I$HERE/include -I$ACNET/include"
 
 "$CC" $BARE $INC -I"$HERE/library" -o "$OUT/opensocket.library" \

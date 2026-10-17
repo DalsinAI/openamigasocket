@@ -10,7 +10,7 @@ fi
 
 CC="$STOVE/prefix/bin/m68k-amigaos-gcc"
 OUT=${1:-"$HERE/build"}
-CFLAGS="-m68020 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul -I$HERE/../../guest/network/acnetwork/include"
+CFLAGS="-m68040 -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul -I$HERE/../../guest/network/acnetwork/include"
 mkdir -p "$OUT"
 
 build_one() {
