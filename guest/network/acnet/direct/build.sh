@@ -8,6 +8,8 @@
 # OPT= (default -Os). MIT.
 set -eu
 HERE=$(cd "$(dirname "$0")" && pwd)
+# soft float: link libnix's libm020, not libm881 (specs/m68k-soft-m68040.specs)
+SPECS="$(cd "$HERE/../../../.." && pwd)/specs/m68k-soft-m68040.specs"
 GUEST=$(cd "$HERE/../../.." && pwd)
 OUT=${1:?usage: build.sh OUT_DIR}
 [ -n "${STOVE:-}" ] || { echo "Set STOVE" >&2; exit 2; }
@@ -22,7 +24,7 @@ LWIP="$L/core/def.c $L/core/dns.c $L/core/inet_chksum.c $L/core/init.c $L/core/i
   $L/netif/ethernet.c"
 # direct_stack.c first: its RomTag is the first in the image
 # shellcheck disable=SC2086
-"$CC" -m68040 $OPT ${DIRECT_CFLAGS:-} -s -fomit-frame-pointer -fno-builtin -Wall -Wno-pointer-sign -Werror -nostartfiles -nostdlib \
+"$CC" -m68040 -specs=$SPECS $OPT ${DIRECT_CFLAGS:-} -s -fomit-frame-pointer -fno-builtin -Wall -Wno-pointer-sign -Werror -nostartfiles -nostdlib \
   -I"$HERE/port" -I"$L/include" -I"$HERE" -I"$HERE/../library" -I"$GUEST/common/protocol" \
   -I"$GUEST/network/acnetwork/include" -I"$HERE/../include" -I"$STOVE/ndk/SANA+RoadshowTCP-IP/include" \
   -o "$OUT/opensocketdirect.image" "$HERE/direct_stack.c" "$HERE/direct_sock.c" $LWIP \
