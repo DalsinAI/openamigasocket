@@ -19,8 +19,8 @@
 /* a host's names and addresses */
 struct hostent
 {
-    STRPTR h_name;			/* its official name */
-    STRPTR *h_aliases;		/* other names, NULL at the end */
+    char *h_name;			/* its official name */
+    char **h_aliases;		/* other names, NULL at the end */
     LONG h_addrtype;		/* AF_INET */
     LONG h_length;			/* the length of each address */
     char **h_addr_list;		/* its addresses, NULL at the end */
@@ -30,8 +30,8 @@ struct hostent
 /* a network's names and number */
 struct netent
 {
-    STRPTR n_name;
-    STRPTR *n_aliases;
+    char *n_name;
+    char **n_aliases;
     LONG n_addrtype;
     in_addr_t n_net;
 };
@@ -39,17 +39,17 @@ struct netent
 /* a service's names, port and protocol */
 struct servent
 {
-    STRPTR s_name;
-    STRPTR *s_aliases;
+    char *s_name;
+    char **s_aliases;
     LONG s_port;			/* network byte order */
-    STRPTR s_proto;
+    char *s_proto;
 };
 
 /* a protocol's names and number */
 struct protoent
 {
-    STRPTR p_name;
-    STRPTR *p_aliases;
+    char *p_name;
+    char **p_aliases;
     LONG p_proto;
 };
 

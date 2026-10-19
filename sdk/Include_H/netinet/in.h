@@ -75,7 +75,7 @@ struct sockaddr_in
     sa_family_t sin_family;
     in_port_t sin_port;		/* network byte order */
     struct in_addr sin_addr;
-    UBYTE sin_zero[8];
+    char sin_zero[8];
 };
 
 /* an IPv6 address and socket address */

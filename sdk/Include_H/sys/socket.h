@@ -153,7 +153,7 @@ struct sockaddr
 {
     UBYTE sa_len;
     sa_family_t sa_family;
-    UBYTE sa_data[14];
+    char sa_data[14];
 };
 
 /* the protocol a raw socket uses */
