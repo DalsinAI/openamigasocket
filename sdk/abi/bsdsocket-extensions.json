@@ -1,0 +1,597 @@
+{
+ "name": "bsdsocket.library extension calls: signatures",
+ "note": "The calls guard-v4.json lists by slot without their arguments: return type, argument types and registers, as the interface defines them (facts only). Read by sdk/tools/mksfd.py.",
+ "calls": {
+  "AddRouteTagList": {
+   "ret": "LONG",
+   "args": [
+    [
+     "struct TagItem *",
+     "tags",
+     "a0"
+    ]
+   ]
+  },
+  "DeleteRouteTagList": {
+   "ret": "LONG",
+   "args": [
+    [
+     "struct TagItem *",
+     "tags",
+     "a0"
+    ]
+   ]
+  },
+  "ChangeRouteTagList": {
+   "ret": "LONG",
+   "args": [
+    [
+     "struct TagItem *",
+     "tags",
+     "a0"
+    ]
+   ]
+  },
+  "AddInterfaceTagList": {
+   "ret": "LONG",
+   "args": [
+    [
+     "STRPTR",
+     "interface_name",
+     "a0"
+    ],
+    [
+     "STRPTR",
+     "device_name",
+     "a1"
+    ],
+    [
+     "LONG",
+     "unit",
+     "d0"
+    ],
+    [
+     "struct TagItem *",
+     "tags",
+     "a2"
+    ]
+   ]
+  },
+  "ConfigureInterfaceTagList": {
+   "ret": "LONG",
+   "args": [
+    [
+     "STRPTR",
+     "interface_name",
+     "a0"
+    ],
+    [
+     "struct TagItem *",
+     "tags",
+     "a1"
+    ]
+   ]
+  },
+  "CreateAddrAllocMessageA": {
+   "ret": "LONG",
+   "args": [
+    [
+     "LONG",
+     "version",
+     "d0"
+    ],
+    [
+     "LONG",
+     "protocol",
+     "d1"
+    ],
+    [
+     "STRPTR",
+     "interface_name",
+     "a0"
+    ],
+    [
+     "struct AddressAllocationMessage **",
+     "result_ptr",
+     "a1"
+    ],
+    [
+     "struct TagItem *",
+     "tags",
+     "a2"
+    ]
+   ]
+  },
+  "DeleteAddrAllocMessage": {
+   "ret": "VOID",
+   "args": [
+    [
+     "struct AddressAllocationMessage *",
+     "aam",
+     "a0"
+    ]
+   ]
+  },
+  "BeginInterfaceConfig": {
+   "ret": "VOID",
+   "args": [
+    [
+     "struct AddressAllocationMessage *",
+     "message",
+     "a0"
+    ]
+   ]
+  },
+  "AbortInterfaceConfig": {
+   "ret": "VOID",
+   "args": [
+    [
+     "struct AddressAllocationMessage *",
+     "message",
+     "a0"
+    ]
+   ]
+  },
+  "AddNetMonitorHookTagList": {
+   "ret": "LONG",
+   "args": [
+    [
+     "LONG",
+     "type",
+     "d0"
+    ],
+    [
+     "struct Hook *",
+     "hook",
+     "a0"
+    ],
+    [
+     "struct TagItem *",
+     "tags",
+     "a1"
+    ]
+   ]
+  },
+  "RemoveNetMonitorHook": {
+   "ret": "VOID",
+   "args": [
+    [
+     "struct Hook *",
+     "hook",
+     "a0"
+    ]
+   ]
+  },
+  "AddDomainNameServer": {
+   "ret": "LONG",
+   "args": [
+    [
+     "STRPTR",
+     "address",
+     "a0"
+    ]
+   ]
+  },
+  "RemoveDomainNameServer": {
+   "ret": "LONG",
+   "args": [
+    [
+     "STRPTR",
+     "address",
+     "a0"
+    ]
+   ]
+  },
+  "setnetent": {
+   "ret": "VOID",
+   "args": [
+    [
+     "LONG",
+     "stay_open",
+     "d0"
+    ]
+   ]
+  },
+  "endnetent": {
+   "ret": "VOID",
+   "args": []
+  },
+  "getnetent": {
+   "ret": "struct netent *",
+   "args": []
+  },
+  "setprotoent": {
+   "ret": "VOID",
+   "args": [
+    [
+     "LONG",
+     "stay_open",
+     "d0"
+    ]
+   ]
+  },
+  "endprotoent": {
+   "ret": "VOID",
+   "args": []
+  },
+  "getprotoent": {
+   "ret": "struct protoent *",
+   "args": []
+  },
+  "setservent": {
+   "ret": "VOID",
+   "args": [
+    [
+     "LONG",
+     "stay_open",
+     "d0"
+    ]
+   ]
+  },
+  "endservent": {
+   "ret": "VOID",
+   "args": []
+  },
+  "getservent": {
+   "ret": "struct servent *",
+   "args": []
+  },
+  "mbuf_copym": {
+   "ret": "struct mbuf *",
+   "args": [
+    [
+     "struct mbuf *",
+     "m",
+     "a0"
+    ],
+    [
+     "LONG",
+     "off",
+     "d0"
+    ],
+    [
+     "LONG",
+     "len",
+     "d1"
+    ]
+   ]
+  },
+  "mbuf_copyback": {
+   "ret": "LONG",
+   "args": [
+    [
+     "struct mbuf *",
+     "m",
+     "a0"
+    ],
+    [
+     "LONG",
+     "off",
+     "d0"
+    ],
+    [
+     "LONG",
+     "len",
+     "d1"
+    ],
+    [
+     "APTR",
+     "cp",
+     "a1"
+    ]
+   ]
+  },
+  "mbuf_copydata": {
+   "ret": "LONG",
+   "args": [
+    [
+     "struct mbuf *",
+     "m",
+     "a0"
+    ],
+    [
+     "LONG",
+     "off",
+     "d0"
+    ],
+    [
+     "LONG",
+     "len",
+     "d1"
+    ],
+    [
+     "APTR",
+     "cp",
+     "a1"
+    ]
+   ]
+  },
+  "mbuf_free": {
+   "ret": "struct mbuf *",
+   "args": [
+    [
+     "struct mbuf *",
+     "m",
+     "a0"
+    ]
+   ]
+  },
+  "mbuf_freem": {
+   "ret": "VOID",
+   "args": [
+    [
+     "struct mbuf *",
+     "m",
+     "a0"
+    ]
+   ]
+  },
+  "mbuf_get": {
+   "ret": "struct mbuf *",
+   "args": []
+  },
+  "mbuf_gethdr": {
+   "ret": "struct mbuf *",
+   "args": []
+  },
+  "mbuf_prepend": {
+   "ret": "struct mbuf *",
+   "args": [
+    [
+     "struct mbuf *",
+     "m",
+     "a0"
+    ],
+    [
+     "LONG",
+     "len",
+     "d0"
+    ]
+   ]
+  },
+  "mbuf_cat": {
+   "ret": "LONG",
+   "args": [
+    [
+     "struct mbuf *",
+     "m",
+     "a0"
+    ],
+    [
+     "struct mbuf *",
+     "n",
+     "a1"
+    ]
+   ]
+  },
+  "mbuf_adj": {
+   "ret": "LONG",
+   "args": [
+    [
+     "struct mbuf *",
+     "mp",
+     "a0"
+    ],
+    [
+     "LONG",
+     "req_len",
+     "d0"
+    ]
+   ]
+  },
+  "mbuf_pullup": {
+   "ret": "struct mbuf *",
+   "args": [
+    [
+     "struct mbuf *",
+     "m",
+     "a0"
+    ],
+    [
+     "LONG",
+     "len",
+     "d0"
+    ]
+   ]
+  },
+  "ProcessIsServer": {
+   "ret": "BOOL",
+   "args": [
+    [
+     "struct Process *",
+     "pr",
+     "a0"
+    ]
+   ]
+  },
+  "ObtainServerSocket": {
+   "ret": "LONG",
+   "args": []
+  },
+  "GetDefaultDomainName": {
+   "ret": "BOOL",
+   "args": [
+    [
+     "STRPTR",
+     "buffer",
+     "a0"
+    ],
+    [
+     "LONG",
+     "buffer_size",
+     "d0"
+    ]
+   ]
+  },
+  "SetDefaultDomainName": {
+   "ret": "VOID",
+   "args": [
+    [
+     "STRPTR",
+     "buffer",
+     "a0"
+    ]
+   ]
+  },
+  "ObtainRoadshowData": {
+   "ret": "struct List *",
+   "args": [
+    [
+     "LONG",
+     "access",
+     "d0"
+    ]
+   ]
+  },
+  "ReleaseRoadshowData": {
+   "ret": "VOID",
+   "args": [
+    [
+     "struct List *",
+     "list",
+     "a0"
+    ]
+   ]
+  },
+  "ChangeRoadshowData": {
+   "ret": "BOOL",
+   "args": [
+    [
+     "struct List *",
+     "list",
+     "a0"
+    ],
+    [
+     "STRPTR",
+     "name",
+     "a1"
+    ],
+    [
+     "ULONG",
+     "length",
+     "d0"
+    ],
+    [
+     "APTR",
+     "data",
+     "a2"
+    ]
+   ]
+  },
+  "RemoveInterface": {
+   "ret": "LONG",
+   "args": [
+    [
+     "STRPTR",
+     "interface_name",
+     "a0"
+    ],
+    [
+     "LONG",
+     "force",
+     "d0"
+    ]
+   ]
+  },
+  "ipf_open": {
+   "ret": "LONG",
+   "args": [
+    [
+     "LONG",
+     "channel",
+     "d0"
+    ]
+   ]
+  },
+  "ipf_close": {
+   "ret": "LONG",
+   "args": [
+    [
+     "LONG",
+     "channel",
+     "d0"
+    ]
+   ]
+  },
+  "ipf_ioctl": {
+   "ret": "LONG",
+   "args": [
+    [
+     "LONG",
+     "channel",
+     "d0"
+    ],
+    [
+     "ULONG",
+     "command",
+     "d1"
+    ],
+    [
+     "APTR",
+     "buffer",
+     "a0"
+    ]
+   ]
+  },
+  "ipf_log_read": {
+   "ret": "LONG",
+   "args": [
+    [
+     "LONG",
+     "channel",
+     "d0"
+    ],
+    [
+     "APTR",
+     "buffer",
+     "a0"
+    ],
+    [
+     "LONG",
+     "len",
+     "d1"
+    ]
+   ]
+  },
+  "ipf_log_data_waiting": {
+   "ret": "LONG",
+   "args": [
+    [
+     "LONG",
+     "channel",
+     "d0"
+    ]
+   ]
+  },
+  "ipf_set_notify_mask": {
+   "ret": "LONG",
+   "args": [
+    [
+     "LONG",
+     "channel",
+     "d0"
+    ],
+    [
+     "ULONG",
+     "mask",
+     "d1"
+    ]
+   ]
+  },
+  "ipf_set_interrupt_mask": {
+   "ret": "LONG",
+   "args": [
+    [
+     "LONG",
+     "channel",
+     "d0"
+    ],
+    [
+     "ULONG",
+     "mask",
+     "d1"
+    ]
+   ]
+  }
+ }
+}

@@ -12,7 +12,17 @@ fi
 
 CC="$STOVE/prefix/bin/m68k-amigaos-gcc"
 OUT=${1:-"$HERE/build"}
+# The library itself and its tools use the kernel-side network headers
+# (net/route.h, net/bpf.h, sys/mbuf.h, netinet/*_var.h), which OpenNDK
+# doesn't have yet (sdk/README.md); until it does, they build against the
+# vendor NDK the stoves keep beside it, as before the stoves took OpenNDK.
+if [ -d "$STOVE/prefix/m68k-amigaos/ndk-include.vendor" ]; then
+  VENDOR_NDK="-I$STOVE/prefix/m68k-amigaos/ndk-include.vendor"
+else
+  VENDOR_NDK=""
+fi
 CFLAGS="-m68040 -specs=$SPECS -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul -I$HERE/../../guest/network/acnetwork/include"
+CFLAGS="$CFLAGS $VENDOR_NDK"
 mkdir -p "$OUT"
 
 build_one() {

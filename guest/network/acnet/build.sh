@@ -33,7 +33,17 @@ if [ "$TARGET" = module ]; then OUT=${OUT:-$HERE/build-amiga}; else OUT=${1:-$GU
 mkdir -p "$OUT"
 BARE="-m68040 -specs=$SPECS -O2 -fno-delete-null-pointer-checks -include sys/types.h -fomit-frame-pointer -fno-toplevel-reorder -fno-builtin -Wall -Wno-pointer-sign -nostartfiles -nostdlib"
 INC="-I$GUEST/common/protocol -I$HERE/include -I$GUEST/network/acnetwork/include"
+# The library itself and its tools use the kernel-side network headers
+# (net/route.h, net/bpf.h, sys/mbuf.h, netinet/*_var.h), which OpenNDK
+# doesn't have yet (sdk/README.md); until it does, they build against the
+# vendor NDK the stoves keep beside it, as before the stoves took OpenNDK.
+if [ -d "$STOVE/prefix/m68k-amigaos/ndk-include.vendor" ]; then
+  VENDOR_NDK="-I$STOVE/prefix/m68k-amigaos/ndk-include.vendor"
+else
+  VENDOR_NDK=""
+fi
 COMPAT_INC="-I$STOVE/ndk/SANA+RoadshowTCP-IP/include"
+COMPAT_INC="$VENDOR_NDK $COMPAT_INC"
 L="$HERE/library"
 # lib_base.c first: its start() must be the library's first code.
 LIB="$L/lib_base.c $L/lib_fd.c $L/lib_errno.c $L/lib_tags.c $L/lib_strings.c $L/lib_select.c $L/lib_conn.c $L/lib_io.c $L/lib_opt.c $L/lib_names.c $L/lib_inet.c $HERE/compat/roadshow/routes.c $HERE/compat/roadshow/state.c $HERE/compat/roadshow/modern.c $HERE/compat/roadshow/bpf.c"
@@ -94,13 +104,13 @@ if [ -f "$HERE/tests/bsdqual.c" ]; then
 fi
 
 if [ -f "$HERE/tests/roadshow_readonly_probe.c" ]; then
-    "$CC" -m68040 -specs=$SPECS -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul \
+    "$CC" -m68040 -specs=$SPECS -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul $VENDOR_NDK \
         -o "$OUT/roadshow-readonly-probe" "$HERE/tests/roadshow_readonly_probe.c"
     echo "$OUT/roadshow-readonly-probe ($(wc -c < "$OUT/roadshow-readonly-probe") bytes)"
 fi
 
 if [ -f "$HERE/tests/modern_compat_probe.c" ]; then
-    "$CC" -m68040 -specs=$SPECS -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul \
+    "$CC" -m68040 -specs=$SPECS -O2 -fno-delete-null-pointer-checks -Wall -Wno-pointer-sign -noixemul $VENDOR_NDK \
         -o "$OUT/modern-compat-probe" "$HERE/tests/modern_compat_probe.c"
     echo "$OUT/modern-compat-probe ($(wc -c < "$OUT/modern-compat-probe") bytes)"
 fi
