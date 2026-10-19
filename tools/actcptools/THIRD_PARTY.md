@@ -12,6 +12,6 @@ The original licence includes the historical advertising acknowledgement require
 
 `ping`, `traceroute` and `arp` above keep their University of California licence inside the MIT project; their notices travel with them.
 
-`httpget`, when built with `AMISSL`, links nothing of AmiSSL statically: it opens AmiSSL 5 at run time. AmiSSL is not redistributed here.
+`httpget` opens `opentls.library` (OpenTLS, the AmigaChrome Team's, MIT) at run time for https://; `third_party/opentls` holds a copy of its API headers (MIT, `third_party/opentls/LICENSE`). Until 19 October 2026 it could be built with AmiSSL 5 instead; nothing of AmiSSL was ever included here.
 
 No AmigaOS NDK headers or libraries are redistributed by ACTCPTools. They are supplied separately to the local build stove.

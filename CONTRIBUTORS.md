@@ -35,7 +35,7 @@ The other tools are our own and none is derived from another implementation.
 ## Used at build or run time, not included
 
 - **libslirp**: the packet provider behind the SANA-II path, on the x86 and ARM64 side.
-- **AmiSSL 5**: `httpget` opens it at run time for https.
+- **OpenTLS** (`opentls.library`, the AmigaChrome Team's, MIT): `httpget` opens it at run time for https (AmiSSL 5 until 19 October 2026). `tools/actcptools/third_party/opentls` holds a copy of its API headers.
 - **AmigaOS NDK**: headers and libraries for the build, supplied separately and not redistributed.
 
 Amiga, AmigaOS and other product names are trademarks of their respective
