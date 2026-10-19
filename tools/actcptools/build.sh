@@ -56,12 +56,10 @@ build_net tftp
 build_net nc
 build_net telnet
 build_net ftp
-# httpget: https:// when AMISSL names the AmiSSL 5 SDK's include folder.
-if [ -n "${AMISSL:-}" ]; then
-    build_net httpget -DHAVE_AMISSL -I"$AMISSL"
-else
-    build_net httpget
-fi
+# httpget: https:// through OpenTLS (opentls.library, opened at run time; its
+# API headers in third_party/opentls). No AmiSSL SDK is needed or used: an
+# AMISSL setting from older callers is ignored.
+build_net httpget -I"$HERE/third_party/opentls/include"
 
 # C:OpenSocket (was acnetctl): status, online, offline
 "$CC" $CFLAGS -I"$HERE/src" "$HERE/src/opensocket.c" -o "$OUT/OpenSocket"
