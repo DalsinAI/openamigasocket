@@ -3,8 +3,10 @@
  *   httpget -o file URL        saves it as file (-o - shows it)
  *   httpget -I URL             only the server's headers
  *   httpget -q ...             no progress
- * http:// always; https:// when built with AmiSSL and AmiSSL 5 is installed
- * (certificates checked against AmiSSL's store). Follows up to 5 redirects.
+ * http:// always; https:// through OpenTLS (opentls.library, OpenUp's OpenTLS
+ * part): TLS 1.2 or later, the server's certificate checked against
+ * S:OpenTLS/ca-bundle.pem and ENVARC:OpenTLS/certs/, and its name. Follows
+ * up to 5 redirects. (Until 1.1 https:// needed a build with AmiSSL 5.)
  * OpenSocket ACTCPTools. MIT. */
 #include <exec/types.h>
 #include <dos/dos.h>
@@ -14,16 +16,8 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <proto/bsdsocket.h>
-#ifdef HAVE_AMISSL
-#include <proto/amisslmaster.h>
-#include <proto/amissl.h>
-#include <libraries/amisslmaster.h>
-#include <libraries/amissl.h>
-#include <amissl/amissl.h>
-#include <openssl/ssl.h>
-#include <openssl/x509v3.h>
-#include <errno.h>
-#endif
+#include <proto/opentls.h>
+#include <libraries/opentls.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,13 +25,11 @@
 
 #include "ostool.h"
 
-static const char version[] __attribute__((used)) = "$VER: httpget 1.0 (4.10.2026) OpenSocket";
+static const char version[] __attribute__((used)) = "$VER: httpget 1.1 (19.10.2026) OpenSocket";
 
-#ifdef HAVE_AMISSL
-struct Library *AmiSSLMasterBase, *AmiSSLBase, *AmiSSLExtBase;
-static SSL_CTX *ctx;
-static SSL *ssl;
-#endif
+struct Library *OpenTLSBase;
+static struct OTContext *ot_ctx;           /* made on the first https://, kept for redirects */
+static struct OTConnection *ot;
 
 static LONG sock = -1;
 static BOOL quiet;
@@ -46,40 +38,36 @@ static long in_have, in_at;
 
 /* ---- the connection: plain or TLS ------------------------------------------ */
 
-#ifdef HAVE_AMISSL
 static int tls_start(const char *host)
 {
-    long verify;
-    if (!AmiSSLBase) {
-        if (!(AmiSSLMasterBase = OpenLibrary("amisslmaster.library", AMISSLMASTER_MIN_VERSION))) {
-            fprintf(stderr, "httpget: https needs AmiSSL 5 (amisslmaster.library)\n");
-            return 0;
-        }
-        if (OpenAmiSSLTags(AMISSL_CURRENT_VERSION, AmiSSL_UsesOpenSSLStructs, FALSE,
-                           AmiSSL_GetAmiSSLBase, (ULONG)&AmiSSLBase, AmiSSL_GetAmiSSLExtBase, (ULONG)&AmiSSLExtBase,
-                           AmiSSL_SocketBase, (ULONG)SocketBase, AmiSSL_ErrNoPtr, (ULONG)&errno, TAG_DONE)) {
-            AmiSSLBase = NULL;
-            fprintf(stderr, "httpget: AmiSSL could not be opened (older than AmiSSL 5?)\n");
-            return 0;
-        }
-    }
-    if (!(ctx = SSL_CTX_new(TLS_client_method()))) return 0;
-    SSL_CTX_set_min_proto_version(ctx, TLS1_2_VERSION);
-    SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-    if (!SSL_CTX_set_default_verify_paths(ctx)) {
-        fprintf(stderr, "httpget: AmiSSL's trusted certificates could not be loaded\n");
+    LONG error = 0, r;
+    if (!OpenTLSBase && !(OpenTLSBase = OpenLibrary((CONST_STRPTR)OPENTLSLIB_NAME, OPENTLSLIB_VERSION))) {
+        fprintf(stderr, "httpget: https:// needs OpenTLS (opentls.library, OpenUp's OpenTLS part)\n");
         return 0;
     }
-    if (!(ssl = SSL_new(ctx))) return 0;
-    SSL_set_tlsext_host_name(ssl, host);
-    SSL_set1_host(ssl, host);
-    SSL_set_fd(ssl, (int)sock);
-    if (SSL_connect(ssl) != 1) {
-        verify = SSL_get_verify_result(ssl);
-        if (verify != X509_V_OK)
-            fprintf(stderr, "httpget: %s's certificate was not accepted: %s\n", host, X509_verify_cert_error_string(verify));
+    if (!ot_ctx) {
+        struct OTContextConfig config;
+        memset(&config, 0, sizeof config);
+        config.Size = sizeof config;
+        config.MinVersion = OT_TLS12;
+        config.ALPN = (STRPTR)"http/1.1";
+        if (!(ot_ctx = OT_NewContext(&config, &error))) {
+            fprintf(stderr, "httpget: OpenTLS could not be set up: %s\n", (const char *)OT_ErrorString(error));
+            return 0;
+        }
+    }
+    if (!(ot = OT_NewConnection(ot_ctx, (CONST_STRPTR)host, &error))) {
+        fprintf(stderr, "httpget: OpenTLS could not be set up: %s\n", (const char *)OT_ErrorString(error));
+        return 0;
+    }
+    OT_SetSocket(ot, sock, SocketBase);
+    if ((r = OT_Handshake(ot)) != OTERR_OK) {
+        CONST_STRPTR why = OT_GetErrorText(ot);
+        if (r == OTERR_UNTRUSTED || r == OTERR_HOSTNAME || r == OTERR_EXPIRED || r == OTERR_BADCERT ||
+            r == OTERR_TRUSTSTORE)
+            fprintf(stderr, "httpget: %s's certificate was not accepted: %s\n", host, why ? (const char *)why : "?");
         else
-            fprintf(stderr, "httpget: the TLS handshake with %s failed\n", host);
+            fprintf(stderr, "httpget: the TLS handshake with %s failed: %s\n", host, why ? (const char *)why : "?");
         return 0;
     }
     return 1;
@@ -87,16 +75,12 @@ static int tls_start(const char *host)
 
 static void tls_end(void)
 {
-    if (ssl) { SSL_shutdown(ssl); SSL_free(ssl); ssl = NULL; }
-    if (ctx) { SSL_CTX_free(ctx); ctx = NULL; }
+    if (ot) { OT_Close(ot); OT_FreeConnection(ot); ot = NULL; }
 }
-#endif
 
 static void conn_close(void)
 {
-#ifdef HAVE_AMISSL
     tls_end();
-#endif
     if (sock >= 0) CloseSocket(sock);
     sock = -1;
     in_have = in_at = 0;
@@ -104,24 +88,14 @@ static void conn_close(void)
 
 static int conn_open(const char *host, unsigned port, BOOL tls)
 {
-#ifndef HAVE_AMISSL
-    if (tls) {
-        fprintf(stderr, "httpget: this httpget was built without AmiSSL, so it cannot fetch https://\n");
-        return 0;
-    }
-#endif
     if ((sock = ost_connect("httpget", host, port, 20)) < 0) return 0;
-#ifdef HAVE_AMISSL
     if (tls && !tls_start(host)) { conn_close(); return 0; }
-#endif
     return 1;
 }
 
 static int conn_write(const char *text)
 {
-#ifdef HAVE_AMISSL
-    if (ssl) return SSL_write(ssl, text, (int)strlen(text)) == (int)strlen(text) ? 0 : -1;
-#endif
+    if (ot) return OT_Write(ot, (CONST_APTR)text, (LONG)strlen(text)) == (LONG)strlen(text) ? 0 : -1;
     return ost_send_str(sock, text);
 }
 
@@ -135,20 +109,18 @@ static long conn_read(char *buf, long max)
         in_at += n;
         return n;
     }
-#ifdef HAVE_AMISSL
-    if (ssl && SSL_pending(ssl) > 0) {
-        n = SSL_read(ssl, buf, (int)max);
+    if (ot && OT_Pending(ot) > 0) {
+        n = OT_Read(ot, buf, max);
         return n > 0 ? n : -1;
     }
-#endif
     if (ost_wait_read(sock, 60000) <= 0) return -1;
-#ifdef HAVE_AMISSL
-    if (ssl) {
-        n = SSL_read(ssl, buf, (int)max);
-        if (n > 0) return n;
-        return SSL_get_error(ssl, (int)n) == SSL_ERROR_ZERO_RETURN ? 0 : -1;
+    if (ot) {
+        /* 0: close_notify; OTERR_CLOSED: closed without one, the end as on a
+         * plain socket (a Content-Length still catches a cut-off body) */
+        n = OT_Read(ot, buf, max);
+        if (n >= 0) return n;
+        return n == OTERR_CLOSED ? 0 : -1;
     }
-#endif
     n = recv(sock, buf, max, 0);
     return n;
 }
@@ -367,10 +339,8 @@ static int httpget_main(int argc, char **argv)
 
 out:
     conn_close();
-#ifdef HAVE_AMISSL
-    if (AmiSSLBase) CloseAmiSSL();
-    if (AmiSSLMasterBase) CloseLibrary(AmiSSLMasterBase);
-#endif
+    if (ot_ctx) { OT_FreeContext(ot_ctx); ot_ctx = NULL; }
+    if (OpenTLSBase) { CloseLibrary(OpenTLSBase); OpenTLSBase = NULL; }
     ost_close();
     return rc;
 }
