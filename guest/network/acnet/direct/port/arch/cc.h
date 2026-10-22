@@ -1,5 +1,5 @@
 /* OpenSocketDirect: lwIP's compiler and platform layer for the 68k (big
- * endian), built bare with the os32-gcc16 stove (no C library). MIT. */
+ * endian), built bare (no C library) with the os32 or the os32-gcc16 stove. MIT. */
 #ifndef OPENSOCKET_ARCH_CC_H
 #define OPENSOCKET_ARCH_CC_H
 
@@ -19,7 +19,10 @@
 #define LWIP_PLATFORM_ASSERT(x) do { } while (0)
 #define LWIP_NO_UNISTD_H 1
 #define SSIZE_MAX 0x7fffffffL
-typedef long ssize_t;
+/* ssize_t is the stove's own (sys/types.h; lwIP's sources include stdio.h):
+ * a typedef of ours as long conflicted with the os32 stove's int (mem.c,
+ * 22 October 2026). Either is 32 bits here. */
+#include <sys/types.h>
 
 #define PACK_STRUCT_FIELD(x) x
 #define PACK_STRUCT_STRUCT __attribute__((packed))
